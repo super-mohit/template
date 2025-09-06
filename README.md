@@ -1,43 +1,81 @@
-# Full-Stack Development Template
+# AI-Powered Command Center Template
 
-A production-ready template for building modern web applications with FastAPI backend and Next.js frontend, containerized with Docker for seamless local development and production deployment.
+A production-ready template for building AI-powered business process automation systems. This template follows the **Supervity Command Center Playbook** - our methodology for creating intelligent systems that don't just help users perform tasks, but give users and AI the oversight and control to manage entire business processes.
+
+**📖 [Read the Complete Playbook →](docs/command_center_guide.md)**
+
+Perfect for building Command Centers across any business domain: Procurement, HR, ITSM, Customer Service, Accounts Payable, and more.
 
 ## 🏗️ Tech Stack
 
-**Backend:**
-- FastAPI (Python web framework)
+**Backend (AI-Ready):**
+- FastAPI (Python web framework) - Perfect for AI model integration
 - Gunicorn (WSGI server for production)
 - Uvicorn (ASGI server)
+- Background task support (for AI processing)
+- AI Model Abstraction Layer (swap between OpenAI, Gemini, Anthropic)
 
-**Frontend:**
+**Frontend (Command Center UI):**
 - Next.js 15 with React 19
 - TypeScript
 - Tailwind CSS
 - Radix UI components
+- Built for Dashboard + Workbench + AI Chat interfaces
 
 **Infrastructure:**
 - Docker & Docker Compose
 - Multi-stage Docker builds for optimized production images
+- Ready for PostgreSQL, Redis, and other AI-supporting services
+
+## 🧠 Command Center Architecture
+
+This template implements the **Three Pillars of a Command Center**:
+
+1. **🎯 The Dashboard ("The Eyes")** - Strategic overview with role-based insights
+2. **🛠️ The Workbench ("The Hands")** - Tactical workspace for handling AI exceptions  
+3. **⚡ The AI Engine ("The Brain")** - Configurable policies and autonomous decision-making
+
+**Core Operational Loop:** Ingest → Link/Enrich → Analyze/Decide → Act → Learn
 
 ## 📁 Project Structure
 
 ```
 ├── app/                    # FastAPI backend application
-│   └── main.py            # Main FastAPI app with health checks & CORS
-├── frontend/              # Next.js frontend application
-│   ├── src/               # Source code
+│   ├── main.py            # Main FastAPI app with health checks & CORS
+│   └── modules/           # Your Command Center modules go here
+│       └── ai_service/    # AI model abstraction layer
+├── docs/                  # Documentation & design decisions
+│   └── command_center_guide.md  # The complete playbook
+├── frontend/              # Next.js Command Center UI
+│   ├── src/               # Dashboard, Workbench, AI Chat components
 │   ├── Dockerfile         # Frontend container config
 │   └── package.json       # Dependencies & scripts
 ├── gunicorn/              # Gunicorn server configurations
 │   ├── dev.py             # Development settings (hot reload)
 │   └── prod.py            # Production settings (optimized)
 ├── packages/              # Python dependencies
-│   └── requirements.txt   # Backend package requirements
+│   └── requirements.txt   # Backend packages (add AI SDKs here)
 ├── docker-compose.yml     # Multi-container orchestration
 ├── Dockerfile             # Backend container config (multi-stage)
 ├── Makefile              # Development workflow automation
 └── README.md             # This file
 ```
+
+## 🎯 Getting Started with Command Centers
+
+**New to AI-Powered Command Centers?** Start here:
+
+1. **📖 Read the Playbook** - [Complete Command Center Guide](docs/command_center_guide.md)
+2. **🧠 Choose Your Domain** - Procurement? HR? ITSM? Customer Service?
+3. **🔍 Identify the Process** - Use the "5 Whys" technique from the playbook
+4. **⚡ Define Your Loop** - Map your process to: Ingest → Link → Analyze → Act → Learn
+5. **🏗️ Build Your Pillars** - Dashboard, Workbench, and AI Engine
+
+**Example Command Centers You Can Build:**
+- **Procurement Command Center** - Automate Purchase Request approvals and vendor management
+- **HR Onboarding Command Center** - Orchestrate new hire workflows across departments  
+- **ITSM Command Center** - Intelligent ticket routing and resolution automation
+- **AP Command Center** - 3-way matching and invoice processing automation
 
 ## 🚀 Quick Start
 
@@ -47,10 +85,33 @@ A production-ready template for building modern web applications with FastAPI ba
 
 ### Local Development
 
-1. **Clone and start services:**
+1. **Clone the repository:**
    ```bash
    git clone <your-repo-url>
    cd <project-directory>
+   ```
+
+2. **Set up environment files:**
+   
+   **Root `.env` file:**
+   ```bash
+   # Create .env in project root
+   cat > .env << EOF
+   FRONTEND_URL=http://localhost:3000
+   NODE_ENV=development
+   EOF
+   ```
+   
+   **Frontend `.env.local` file:**
+   ```bash
+   # Create .env.local in frontend directory
+   cat > frontend/.env.local << EOF
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+   EOF
+   ```
+
+3. **Start services:**
+   ```bash
    make up
    ```
    
@@ -59,18 +120,18 @@ A production-ready template for building modern web applications with FastAPI ba
    docker-compose up --build -d
    ```
 
-2. **Access your application:**
+4. **Access your application:**
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:8000
    - Health check: http://localhost:8000/api/health
 
-3. **View logs:**
+5. **View logs:**
    ```bash
    make logs-fe    # Frontend logs
    make logs-be    # Backend logs
    ```
 
-4. **Stop services:**
+6. **Stop services:**
    ```bash
    make down
    ```
@@ -140,11 +201,11 @@ docker-compose up --build -d
 4. Set up SSL certificates
 5. Configure monitoring and logging
 
-## 🔧 Customization
+## 🔧 Building Your Command Center
 
-### Adding Dependencies
+### Step 1: Set Up AI Integration
 
-**Backend:**
+**Add AI SDKs to your backend:**
 ```bash
 # Add to packages/requirements.txt
 echo "new-package==1.0.0" >> packages/requirements.txt
@@ -152,32 +213,65 @@ echo "new-package==1.0.0" >> packages/requirements.txt
 make down && make up
 ```
 
-**Frontend:**
-```bash
-# Add to frontend/package.json or run:
-docker-compose exec frontend npm install new-package
-# Rebuild containers
-make down && make up
+**Create your AI Service abstraction:**
+```python
+# app/modules/ai_service/main.py
+async def get_recommendation(data: dict) -> dict:
+    """Your AI logic here - swap between models easily"""
+    pass
 ```
 
-### Extending the API
-- Add new routes in `app/main.py` or create separate router files
-- The FastAPI app includes CORS middleware configured for frontend communication
-- Health check endpoint (`/api/health`) is required for Docker health checks
+### Step 2: Build the Three Pillars
 
-### Frontend Configuration
-- Modify `frontend/src/app/page.tsx` to customize the home page
-- Add new pages in `frontend/src/app/`
-- Configure API base URL via `NEXT_PUBLIC_API_URL` environment variable
+**Dashboard (`frontend/src/app/dashboard`):**
+- Role-based views for managers vs operators
+- Key metrics and performance indicators
+- Strategic insights, not just data dumps
 
-## 🔍 Key Features
+**Workbench (`frontend/src/app/workbench`):**
+- Single-record focused workspace
+- All context for human decisions
+- **Critical:** Feedback mechanisms to teach the AI
 
+**AI Policies (`frontend/src/app/policies`):**
+- Rule builder interface for admins
+- Visual policy management
+- Real-time rule testing and validation
+
+### Step 3: Implement the Learning Loop
+
+**Audit Everything:**
+```python
+# Store raw inputs, AI outputs, and final outcomes
+# Create feedback tables linked to specific records
+```
+
+**Background Learning Jobs:**
+```python
+# Scan audit logs for patterns
+# Generate automation suggestions
+# Process explicit user feedback
+```
+
+## 🔍 Command Center Features
+
+**AI-First Architecture:**
+- **AI Model Abstraction**: Swap between OpenAI, Gemini, Anthropic without code changes
+- **Background AI Processing**: Non-blocking AI calls keep the UI responsive
+- **Learning Loop Integration**: Built-in feedback mechanisms and audit trails
+
+**Production-Ready Foundation:**
 - **Hot Reload**: Backend code changes trigger automatic reloads in development
 - **Health Checks**: Docker health checks ensure services are running correctly
 - **CORS Configuration**: Pre-configured for frontend-backend communication
 - **Multi-stage Builds**: Optimized Docker images for production
 - **Flexible Configuration**: Environment-based settings for different deployment scenarios
-- **Development Tools**: Comprehensive Makefile for common tasks
+
+**Command Center Specific:**
+- **Three Pillars Architecture**: Dashboard, Workbench, and AI Policies structure
+- **Role-Based Access**: Different views for managers, operators, and admins
+- **Audit Trail**: Every decision tracked for AI learning and compliance
+- **Real-Time Updates**: WebSocket support for live status updates
 
 ## 📝 Development Notes
 
@@ -190,13 +284,22 @@ make down && make up
 ## 🆘 Troubleshooting
 
 **Services won't start:**
+- **First, check environment files exist:**
+  - Root `.env` file with `FRONTEND_URL` and `NODE_ENV`
+  - Frontend `.env.local` file with `NEXT_PUBLIC_API_URL`
 - Ensure ports 3000 and 8000 are available
 - Check Docker daemon is running
 - View logs: `make logs-be` or `make logs-fe`
 
 **CORS errors:**
-- Verify `FRONTEND_URL` environment variable matches your frontend URL
+- Verify `FRONTEND_URL` in root `.env` matches your frontend URL
+- Ensure `NEXT_PUBLIC_API_URL` in `frontend/.env.local` points to your backend
 - Check browser network tab for actual request URLs
+
+**Frontend can't connect to backend:**
+- Verify `NEXT_PUBLIC_API_URL=http://localhost:8000` in `frontend/.env.local`
+- Check that backend is running on port 8000
+- Test backend directly: `curl http://localhost:8000/api/health`
 
 **Database connection issues:**
 - Uncomment and configure database settings in `docker-compose.yml`
@@ -204,4 +307,17 @@ make down && make up
 
 ---
 
-Happy coding! 🎉 This template is designed to get you up and running quickly while providing a solid foundation for scaling your application.
+## 🚀 Ready to Build Intelligence?
+
+This template isn't just about building software—it's about creating **intelligent systems that become partners to your business**. 
+
+**Next Steps:**
+1. 📖 **Study the Playbook**: [Complete Command Center Guide](docs/command_center_guide.md)
+2. 🎯 **Identify Your Process**: What business process needs AI-powered automation?
+3. 🏗️ **Start Building**: Use this template as your launchpad
+4. 🧠 **Think AI-First**: Every feature should enable AI autonomy or human oversight
+5. 📚 **Document Everything**: Record your design decisions in `/docs`
+
+**Remember the Supervity Philosophy**: We don't just solve today's problems—we build systems that learn and become indispensable tomorrow.
+
+Happy building! 🎉 ⚡ 🧠
