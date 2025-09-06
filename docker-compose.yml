@@ -15,7 +15,7 @@ services:
   #   restart: unless-stopped
 
   backend:
-    container_name: supervity_backend_procurement
+    container_name: supervity_backend_template
     build:
       context: .
       dockerfile: Dockerfile
@@ -60,7 +60,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    container_name: supervity_frontend_procurement
+    container_name: supervity_frontend_template
     build:
       context: ./frontend
       dockerfile: Dockerfile

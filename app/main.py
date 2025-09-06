@@ -25,8 +25,8 @@ def read_health():
 @app.get("/api/test")
 def read_test_data():
     """A simple test endpoint for the frontend to fetch data from."""
-    return {"message": "Hello from the Procurement Command Center Backend!"}
+    return {"message": "Hello from the Template Command Center Backend!"}
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Procurement CC API"}
+    return {"message": "Welcome to the Template CC API"}

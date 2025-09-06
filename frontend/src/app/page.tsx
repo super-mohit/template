@@ -65,7 +65,7 @@ export default function HealthCheck() {
 
   return (
     <div className="container">
-      <h1>Procurement Backend Health Check</h1>
+      <h1>Template Backend Health Check</h1>
       
       <div className={`status ${getStatusClass()}`}>
         {status.message}

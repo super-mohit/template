@@ -1,7 +1,7 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Procurement Backend Health Check',
+  title: 'Template Backend Health Check',
   description: 'Simple page to check if the backend is working',
 }
 
