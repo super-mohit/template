@@ -24,4 +24,4 @@ ap_data.db-journal
 *.tmp
 
 # Frontend - prevent it from being included in backend context
-supervity-ap-frontend/ 
+frontend/ 
