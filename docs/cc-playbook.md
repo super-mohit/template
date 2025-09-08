@@ -1,5 +1,3 @@
-# The Supervity Playbook: A Guide to Building AI-Powered Command Centers
-
 ## 1. Introduction: The Philosophy of a Command Center
 
 Welcome to the playbook for building next-generation operational tools. We don't just build applications; we build **Command Centers**. What's the difference?
