@@ -1,95 +1,73 @@
+// frontend/src/app/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useSession, signIn, signOut } from 'next-auth/react'
+import apiClient from '@/lib/api-client' // Import our new client
 
-interface BackendStatus {
-  isWorking: boolean
-  message: string
-  details?: string
-  timestamp?: string
-}
+export default function HomePage() {
+  // Get base path from environment for dynamic callbacks
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+  const { data: session, status } = useSession()
+  const [apiResponse, setApiResponse] = useState<string>('')
+  const [adminResponse, setAdminResponse] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
 
-export default function HealthCheck() {
-  const [status, setStatus] = useState<BackendStatus>({
-    isWorking: false,
-    message: 'Checking backend...'
-  })
-  const [isLoading, setIsLoading] = useState(true)
-
-  const checkBackend = async () => {
+  const callApi = async (endpoint: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
     setIsLoading(true)
-    setStatus({ isWorking: false, message: 'Checking backend...' })
-
+    setter('Loading...')
     try {
-      // Try to reach the backend health endpoint
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${apiUrl}/api/health`)
-      
-      if (response.ok) {
-        const data = await response.json()
-        setStatus({
-          isWorking: true,
-          message: 'Backend is working! ✅',
-          details: JSON.stringify(data, null, 2),
-          timestamp: new Date().toLocaleString()
-        })
-      } else {
-        setStatus({
-          isWorking: false,
-          message: `Backend responded with error: ${response.status} ${response.statusText}`,
-          details: `HTTP ${response.status}`,
-          timestamp: new Date().toLocaleString()
-        })
-      }
+      const data = await apiClient(endpoint);
+      setter(JSON.stringify(data, null, 2))
     } catch (error) {
-      setStatus({
-        isWorking: false,
-        message: 'Backend is not responding ❌',
-        details: error instanceof Error ? error.message : 'Unknown error occurred',
-        timestamp: new Date().toLocaleString()
-      })
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      setter(`Error: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Check backend on page load
-  useEffect(() => {
-    checkBackend()
-  }, [])
-
-  const getStatusClass = () => {
-    if (isLoading) return 'loading'
-    return status.isWorking ? 'success' : 'error'
+  if (status === 'loading') {
+    return <div className="container"><h1>Loading session...</h1></div>
   }
 
   return (
     <div className="container">
-      <h1>Template Backend Health Check</h1>
-      
-      <div className={`status ${getStatusClass()}`}>
-        {status.message}
+      <h1>AI Command Center</h1>
+      <div className="status loading" style={{ marginBottom: '30px' }}>
+        User Status: <strong>{status}</strong>
       </div>
-
-      {status.details && (
-        <div className="details">
-          <strong>Response:</strong>
-          {status.details}
+      
+      {status === 'authenticated' ? (
+        <div>
+          <p>Welcome, {session.user?.name || 'user'}!</p>
+          <button onClick={() => signOut({ callbackUrl: `${basePath}/` })}>Sign Out</button>
+        </div>
+      ) : (
+        <div>
+          <p>You are not signed in.</p>
+          <button onClick={() => signIn('keycloak', { callbackUrl: `${basePath}/` })}>Sign In with Keycloak</button>
         </div>
       )}
 
-      {status.timestamp && (
-        <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
-          Last checked: {status.timestamp}
-        </div>
-      )}
+      <hr style={{ margin: '30px 0' }} />
 
-      <button 
-        onClick={checkBackend} 
-        disabled={isLoading}
-      >
-        {isLoading ? 'Checking...' : 'Check Again'}
-      </button>
+      <h2>Test API Endpoints</h2>
+      {status === 'authenticated' ? (
+        <>
+          <button onClick={() => callApi('/api/test', setApiResponse)} disabled={isLoading}>
+            {isLoading ? 'Calling...' : 'Call Protected Endpoint'}
+          </button>
+          {apiResponse && <div className="details"><pre>{apiResponse}</pre></div>}
+
+          <button onClick={() => callApi('/api/admin', setAdminResponse)} disabled={isLoading} style={{ background: '#dc3545', marginTop: '15px' }}>
+            {isLoading ? 'Calling...' : 'Call Admin-Only Endpoint'}
+          </button>
+          {adminResponse && <div className="details"><pre>{adminResponse}</pre></div>}
+        </>
+      ) : (
+        <p>You must be signed in to test the APIs.</p>
+      )}
     </div>
   )
 }

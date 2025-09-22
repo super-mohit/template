@@ -40,9 +40,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Set PYTHONPATH to include app directory, allowing `app.main:app` to be found
 ENV PYTHONPATH="/app"
 
-# Health check using /api/health endpoint
+# Health check using dynamic API path based on BASE_PATH environment variable
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
-  CMD curl -f http://localhost:8000/api/health || exit 1
+  CMD BASE_PATH=${BASE_PATH:-} && API_PATH="${BASE_PATH}/api" && curl -f http://localhost:8000${API_PATH}/health || exit 1
 
 # Expose the port the app runs on
 EXPOSE 8000

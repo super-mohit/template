@@ -14,6 +14,19 @@ services:
   #     - "5432:5432"
   #   restart: unless-stopped
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.4
+    container_name: supervity_keycloak
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - app-network
+
   backend:
     container_name: supervity_backend_template
     build:
@@ -23,9 +36,20 @@ services:
     volumes:
       - ./app:/app/app
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
-      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL=http://localhost:3001/template
+      # --- KEYCLOAK ADDITIONS START ---
+      - KEYCLOAK_SERVER_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=command-center-realm
+      - KEYCLOAK_AUDIENCE=ai-command-center-client
+      - KEYCLOAK_CLIENT_ID=ai-command-center-client
+      - KEYCLOAK_ALGORITHM=RS256
+      # --- KEYCLOAK ADDITIONS END ---
+      # --- BASE_PATH ADDITION START ---
+      - BASE_PATH=/template # Configurable base path
+      - ROOT_PATH=${ROOT_PATH:-} # Defaults to empty string if not set
+      # --- BASE_PATH ADDITION END ---
       # Other environment variables commented out for basic setup
       # - PG_USER=${PG_USER}
       # - PG_PASSWORD=${PG_PASSWORD}
@@ -55,8 +79,10 @@ services:
       # - TARGET_USER_EMAIL=${TARGET_USER_EMAIL}
       # - ADANI_FOLDER_ID=${ADANI_FOLDER_ID}
       # # --- EMAIL INGESTION ADDITIONS END ---
-    # depends_on:
-    #   - postgres  # Removed since using external Azure PostgreSQL
+    depends_on:
+      - keycloak
+    networks:
+      - app-network
     restart: unless-stopped
 
   frontend:
@@ -67,20 +93,43 @@ services:
       # --- MODIFICATION START ---
       args:
         # For Docker deployment, frontend container talks to backend container  
-        # The browser still accesses backend via localhost:8000 due to port mapping
-        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        # The browser still accesses backend via localhost:8001 due to port mapping
+        - NEXT_PUBLIC_API_URL=http://localhost:8001
+        # Pass Keycloak configuration as build arguments
+        - KEYCLOAK_ISSUER=http://keycloak:8080/realms/command-center-realm
+        - KEYCLOAK_CLIENT_ID=ai-command-center-client
+        - KEYCLOAK_CLIENT_SECRET=rndT5ODtoP4LYjYhJ5ntVwsM9F5fNauS
+        - NEXTAUTH_SECRET=+bjzhBcMaFceVRO/GRaydrfS5KRjRj+U/mSO/KFj7BY=
+        - NEXTAUTH_URL=http://localhost:3001/template
+        - NEXT_PUBLIC_BASE_PATH=/template
       # --- MODIFICATION END ---
-    # Removed command override - using default from Dockerfile (npm start)
+    # Using default command from Dockerfile (npm start)
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=production
       # Override the API URL for the runtime environment
-      # This tells the client-side code to use localhost:8000 (which is correct for browser)
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # This tells the client-side code to use localhost:8001 (which is correct for browser)
+      - NEXT_PUBLIC_API_URL=http://localhost:8001
+      # --- BASE_PATH ADDITION START ---
+      - NEXT_PUBLIC_BASE_PATH=/template
+      # --- BASE_PATH ADDITION END ---
+      # --- KEYCLOAK/NEXTAUTH CONFIGURATION ---
+      - KEYCLOAK_CLIENT_ID=ai-command-center-client
+      - KEYCLOAK_CLIENT_SECRET=rndT5ODtoP4LYjYhJ5ntVwsM9F5fNauS
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/command-center-realm # Single URL - browser URL created dynamically
+      - NEXTAUTH_SECRET=+bjzhBcMaFceVRO/GRaydrfS5KRjRj+U/mSO/KFj7BY=
+      - NEXTAUTH_URL=http://localhost:3001/template
     depends_on:
       - backend
+    networks:
+      - app-network
     restart: unless-stopped
 
 volumes:
-  postgres_data: 
+  postgres_data:
+
+# Define the shared network
+networks:
+  app-network:
+    driver: bridge

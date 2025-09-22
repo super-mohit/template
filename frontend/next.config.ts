@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // --- BASE_PATH ADDITION START ---
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || "",
+  // --- BASE_PATH ADDITION END ---
+
   env: {
     NEXT_PUBLIC_API_URL:
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001",
     INTERNAL_API_URL: process.env.INTERNAL_API_URL || "http://backend:8000",
   },
   serverExternalPackages: [],

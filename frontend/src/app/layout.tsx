@@ -1,8 +1,9 @@
 import './globals.css'
+import { Providers } from './providers' // Import the provider
 
 export const metadata = {
-  title: 'Template Backend Health Check',
-  description: 'Simple page to check if the backend is working',
+  title: 'AI Command Center',
+  description: 'AI Command Center Template',
 }
 
 export default function RootLayout({
@@ -12,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }
