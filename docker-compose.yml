@@ -98,7 +98,7 @@ services:
         # Pass Keycloak configuration as build arguments
         - KEYCLOAK_ISSUER=http://keycloak:8080/realms/command-center-realm
         - KEYCLOAK_CLIENT_ID=ai-command-center-client
-        - KEYCLOAK_CLIENT_SECRET=rndT5ODtoP4LYjYhJ5ntVwsM9F5fNauS
+        - KEYCLOAK_CLIENT_SECRET=uC1xyFu3bHw1xHaMEyWQly79S87gkojj
         - NEXTAUTH_SECRET=+bjzhBcMaFceVRO/GRaydrfS5KRjRj+U/mSO/KFj7BY=
         - NEXTAUTH_URL=http://localhost:3001/template
         - NEXT_PUBLIC_BASE_PATH=/template
@@ -116,7 +116,7 @@ services:
       # --- BASE_PATH ADDITION END ---
       # --- KEYCLOAK/NEXTAUTH CONFIGURATION ---
       - KEYCLOAK_CLIENT_ID=ai-command-center-client
-      - KEYCLOAK_CLIENT_SECRET=rndT5ODtoP4LYjYhJ5ntVwsM9F5fNauS
+      - KEYCLOAK_CLIENT_SECRET=uC1xyFu3bHw1xHaMEyWQly79S87gkojj
       - KEYCLOAK_ISSUER=http://keycloak:8080/realms/command-center-realm # Single URL - browser URL created dynamically
       - NEXTAUTH_SECRET=+bjzhBcMaFceVRO/GRaydrfS5KRjRj+U/mSO/KFj7BY=
       - NEXTAUTH_URL=http://localhost:3001/template
