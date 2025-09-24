@@ -5,10 +5,7 @@ import { JWT } from "next-auth/jwt"
 
 // Helper function to get URLs at runtime
 function getKeycloakUrls() {
-  const containerIssuer = process.env.KEYCLOAK_ISSUER;
-  if (!containerIssuer) {
-    throw new Error("KEYCLOAK_ISSUER environment variable is not set");
-  }
+  const containerIssuer = process.env.KEYCLOAK_ISSUER || "http://keycloak:8080/realms/supervity";
   const browserIssuer = containerIssuer.replace("keycloak:8080", "localhost:8080");
   return { containerIssuer, browserIssuer };
 }

@@ -17,10 +17,12 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.4
     container_name: supervity_keycloak
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -38,16 +40,16 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - FRONTEND_URL=http://localhost:3001/template
+      - FRONTEND_URL=http://localhost:3001/satya
       # --- KEYCLOAK ADDITIONS START ---
       - KEYCLOAK_SERVER_URL=http://keycloak:8080
-      - KEYCLOAK_REALM=command-center-realm
-      - KEYCLOAK_AUDIENCE=ai-command-center-client
-      - KEYCLOAK_CLIENT_ID=ai-command-center-client
+      - KEYCLOAK_REALM=supervity
+      - KEYCLOAK_AUDIENCE=super-client-dnh-dev-0001
+      - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
       - KEYCLOAK_ALGORITHM=RS256
       # --- KEYCLOAK ADDITIONS END ---
       # --- BASE_PATH ADDITION START ---
-      - BASE_PATH=/template # Configurable base path
+      - BASE_PATH=/satya # Configurable base path
       - ROOT_PATH=${ROOT_PATH:-} # Defaults to empty string if not set
       # --- BASE_PATH ADDITION END ---
       # Other environment variables commented out for basic setup
@@ -95,13 +97,13 @@ services:
         # For Docker deployment, frontend container talks to backend container  
         # The browser still accesses backend via localhost:8001 due to port mapping
         - NEXT_PUBLIC_API_URL=http://localhost:8001
-        # Pass Keycloak configuration as build arguments
-        - KEYCLOAK_ISSUER=http://keycloak:8080/realms/command-center-realm
-        - KEYCLOAK_CLIENT_ID=ai-command-center-client
-        - KEYCLOAK_CLIENT_SECRET=uC1xyFu3bHw1xHaMEyWQly79S87gkojj
-        - NEXTAUTH_SECRET=+bjzhBcMaFceVRO/GRaydrfS5KRjRj+U/mSO/KFj7BY=
-        - NEXTAUTH_URL=http://localhost:3001/template
-        - NEXT_PUBLIC_BASE_PATH=/template
+        # Pass Keycloak configuration as build arguments (updated for supervity realm)
+        - KEYCLOAK_ISSUER=http://keycloak:8080/realms/supervity
+        - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
+        - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-your-client-secret-here}
+        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-nextauth-secret-here}
+        - NEXTAUTH_URL=http://localhost:3001/satya
+        - NEXT_PUBLIC_BASE_PATH=/satya
       # --- MODIFICATION END ---
     # Using default command from Dockerfile (npm start)
     ports:
@@ -112,15 +114,16 @@ services:
       # This tells the client-side code to use localhost:8001 (which is correct for browser)
       - NEXT_PUBLIC_API_URL=http://localhost:8001
       # --- BASE_PATH ADDITION START ---
-      - NEXT_PUBLIC_BASE_PATH=/template
+      - NEXT_PUBLIC_BASE_PATH=/satya
       # --- BASE_PATH ADDITION END ---
-      # --- KEYCLOAK/NEXTAUTH CONFIGURATION ---
-      - KEYCLOAK_CLIENT_ID=ai-command-center-client
-      - KEYCLOAK_CLIENT_SECRET=uC1xyFu3bHw1xHaMEyWQly79S87gkojj
-      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/command-center-realm # Single URL - browser URL created dynamically
-      - NEXTAUTH_SECRET=+bjzhBcMaFceVRO/GRaydrfS5KRjRj+U/mSO/KFj7BY=
-      - NEXTAUTH_URL=http://localhost:3001/template
+      # --- KEYCLOAK/NEXTAUTH CONFIGURATION (updated for supervity realm) ---
+      - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-your-client-secret-here}
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/supervity # Single URL - browser URL created dynamically
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-nextauth-secret-here}
+      - NEXTAUTH_URL=http://localhost:3001/satya
     depends_on:
+      - keycloak
       - backend
     networks:
       - app-network
