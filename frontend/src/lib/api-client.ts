@@ -20,7 +20,8 @@ async function apiClient(endpoint: string, options: RequestInit = {}) {
   }
 
   // Construct full URL with base path: e.g., http://localhost:8001/template/api/test
-  const fullUrl = `${API_URL}${BASE_PATH}/api${endpoint}`;
+  //const fullUrl = `${API_URL}${BASE_PATH}/api${endpoint}`;
+  const fullUrl = `${API_URL}${BASE_PATH}${endpoint}`;
   const response = await fetch(fullUrl, { ...options, headers });
 
   // If token is invalid/expired on the backend, trigger a re-login

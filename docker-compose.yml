@@ -23,6 +23,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import
+      - ./keycloak_data/:/opt/keycloak/data/h2
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -40,16 +41,18 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - FRONTEND_URL=http://localhost:3001/satya
+      - FRONTEND_URL=http://localhost:3001
       # --- KEYCLOAK ADDITIONS START ---
       - KEYCLOAK_SERVER_URL=http://keycloak:8080
       - KEYCLOAK_REALM=supervity
-      - KEYCLOAK_AUDIENCE=super-client-dnh-dev-0001
-      - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
       - KEYCLOAK_ALGORITHM=RS256
+      - SUPERVITY_AUTH_DEBUG=true
+      - KEYCLOAK_AUDIENCE=account
+      - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-your-client-secret-here}
       # --- KEYCLOAK ADDITIONS END ---
       # --- BASE_PATH ADDITION START ---
-      - BASE_PATH=/satya # Configurable base path
+      - BASE_PATH=/app1 # Configurable base path
       - ROOT_PATH=${ROOT_PATH:-} # Defaults to empty string if not set
       # --- BASE_PATH ADDITION END ---
       # Other environment variables commented out for basic setup
@@ -101,9 +104,11 @@ services:
         - KEYCLOAK_ISSUER=http://keycloak:8080/realms/supervity
         - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
         - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-your-client-secret-here}
+        - KEYCLOAK_SERVER_URL=http://keycloak:8080
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-nextauth-secret-here}
-        - NEXTAUTH_URL=http://localhost:3001/satya
-        - NEXT_PUBLIC_BASE_PATH=/satya
+        - NEXTAUTH_URL=http://localhost:3001/app1
+        - NEXT_PUBLIC_BASE_PATH=/app1
+        - SUPERVITY_AUTH_DEBUG=true
       # --- MODIFICATION END ---
     # Using default command from Dockerfile (npm start)
     ports:
@@ -114,14 +119,14 @@ services:
       # This tells the client-side code to use localhost:8001 (which is correct for browser)
       - NEXT_PUBLIC_API_URL=http://localhost:8001
       # --- BASE_PATH ADDITION START ---
-      - NEXT_PUBLIC_BASE_PATH=/satya
+      - NEXT_PUBLIC_BASE_PATH=/app1
       # --- BASE_PATH ADDITION END ---
       # --- KEYCLOAK/NEXTAUTH CONFIGURATION (updated for supervity realm) ---
       - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-your-client-secret-here}
-      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/supervity # Single URL - browser URL created dynamically
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-nextauth-secret-here}
-      - NEXTAUTH_URL=http://localhost:3001/satya
+      - NEXTAUTH_URL=http://localhost:3001/app1/api/auth/
+      - KEYCLOAK_SERVER_URL=http://keycloak:8080
     depends_on:
       - keycloak
       - backend
