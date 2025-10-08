@@ -23,7 +23,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import
-      - ./keycloak_data/:/opt/keycloak/data/h2
+      - ./keycloak/keycloak_data:/opt/keycloak/data/h2
     ports:
       - "8080:8080"
     restart: unless-stopped
