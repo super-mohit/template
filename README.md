@@ -6,11 +6,11 @@ This repository contains a production-ready, secure, and scalable template for b
 
 ### Core Features
 
-*   🚀 **Production-Ready Stack:** FastAPI, Next.js, PostgreSQL, and Keycloak working in harmony.
-*   🔒 **Pluggable Authorization Engine:** Define complex, context-aware access control rules in simple JSON. Secure by default.
-*   🐳 **Fully Containerized:** A consistent and reproducible development environment powered by Docker and Docker Compose.
-*   🤖 **AI-First Architecture:** Designed from the ground up to support building "AI Command Centers" where AI is a core actor.
-*   💻 **Excellent Developer Experience:** Get up and running with a single command. Includes database migrations, code formatting, and linting.
+*   **Production-Ready Stack:** FastAPI, Next.js, PostgreSQL, and Keycloak working in harmony.
+*   **Pluggable Authorization Engine:** Define complex, context-aware access control rules in simple JSON. Secure by default.
+*   **Fully Containerized:** A consistent and reproducible development environment powered by Docker and Docker Compose.
+*   **AI-First Architecture:** Designed from the ground up to support building "AI Command Centers" where AI is a core actor.
+*   **Excellent Developer Experience:** Get up and running with a single command. Includes database migrations, code formatting, and linting.
 
 ---
 
