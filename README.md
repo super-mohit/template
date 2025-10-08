@@ -59,13 +59,47 @@ Follow these steps to get your local development environment running:
     ```
     *Note: Leave `KEYCLOAK_CLIENT_SECRET` empty for now - you'll configure it in the next step.*
 
-4.  **Launch the Application (First Time)**
+4.  **Update Your Hosts File**
+
+    To ensure Keycloak and your local app resolve correctly, you need to add the following line to your system's hosts file:
+
+    ```
+    127.0.0.1   keycloak my-local-app.local
+    ```
+
+    **On macOS or Linux:**
+    1. Open a terminal.
+    2. Run the following command to open the hosts file with elevated permissions:
+        ```bash
+        sudo nano /etc/hosts
+        ```
+    3. Scroll to the end of the file and add:
+        ```
+        127.0.0.1   keycloak my-local-app.local
+        ```
+    4. Save and exit (`Ctrl+O`, `Enter`, then `Ctrl+X`).
+
+    **On Windows:**
+    1. Open Notepad as Administrator (search for Notepad, right-click, and select "Run as administrator").
+    2. Open the file:  
+        ```
+        C:\Windows\System32\drivers\etc\hosts
+        ```
+    3. Add the following line at the end:
+        ```
+        127.0.0.1   keycloak my-local-app.local
+        ```
+    4. Save the file.
+
+    > **Note:** You must have administrator privileges to edit the hosts file.
+
+5.  **Launch the Application (First Time)**
     This single command will build the Docker images, start all services, and set up your environment. The startup process automatically waits for the database to be ready before running migrations.
     ```bash
     make up
     ```
 
-5.  **Configure Keycloak Client Secret**
+6.  **Configure Keycloak Client Secret**
     After the first startup, you need to switch the Keycloak realm to `supervity`, regenerate the client secret, and update your `.env` file:
 
     a. Open the Keycloak Admin Console at [http://localhost:8080](http://localhost:8080) and log in with credentials: `admin` / `admin`
@@ -86,7 +120,7 @@ Follow these steps to get your local development environment running:
     make up
     ```
 
-6.  **Access Your Services**
+7.  **Access Your Services**
     Your full application stack is now running!
     *   **Frontend Application:** [http://localhost:3001/app1](http://localhost:3001/app1)
     *   **Backend API Docs:** [http://localhost:8001/docs](http://localhost:8001/docs)
