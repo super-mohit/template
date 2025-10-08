@@ -1,0 +1,35 @@
+# Kubernetes Environment Variables Configuration
+# This file defines environment variables for the Kubernetes deployment
+# Update this file to add/remove environment variables - the pipeline will automatically use them
+
+# ============================================
+# FRONTEND ENVIRONMENT VARIABLES
+# ============================================
+[FRONTEND]
+NEXT_PUBLIC_API_URL
+NEXT_PUBLIC_BASE_PATH
+KEYCLOAK_SERVER_URL
+KEYCLOAK_REALM
+KEYCLOAK_CLIENT_ID
+KEYCLOAK_CLIENT_SECRET
+NEXTAUTH_SECRET
+NEXTAUTH_URL
+SUPERVITY_AUTH_DEBUG
+NEXT_PUBLIC_KEYCLOAK_URL
+APP_ENV
+NODE_ENV
+
+# ============================================
+# BACKEND ENVIRONMENT VARIABLES
+# ============================================
+[BACKEND]
+DATABASE_URL
+POSTGRES_USER
+POSTGRES_PASSWORD
+POSTGRES_DB
+APP_ENV
+CORS_ORIGINS
+AUTH_SECRET_KEY
+AUTH_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES
+
