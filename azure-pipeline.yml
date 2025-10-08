@@ -6,8 +6,17 @@ trigger:
  
 pool:
   vmImage: 'ubuntu-latest'
- 
+
 steps:
+# -------------------------------------------------
+# Step 0 – Load Deployment Configuration
+# -------------------------------------------------
+- script: |
+    chmod +x $(Build.SourcesDirectory)/config/load-config.sh
+    source $(Build.SourcesDirectory)/config/load-config.sh $(Build.SourcesDirectory)/config/deployment.yaml
+  displayName: 'Step 0 - Load Deployment Configuration'
+  name: LoadConfig
+
 # -------------------------------------------------
 # Step 1 – Generate Tag Name (publish outputs)
 # -------------------------------------------------
@@ -44,7 +53,9 @@ steps:
 # Step 1.4 – Quick Check: Images were pushed to which registry?
 # -------------------------------------------------
 - bash: |
-    echo "Images will be pushed via service connection: svai-dev-acr_supportingtools_conn"
+    echo "Images will be pushed via service connection: $(ACR_SERVICE_CONNECTION)"
+    echo "Backend repository: $(BACKEND_REPOSITORY)"
+    echo "Frontend repository: $(FRONTEND_REPOSITORY)"
     echo "After this pipeline runs, check the Docker@2 task output above to see the actual registry URL used."
   displayName: 'Step 1.4 - Docker Registry Info'
  
@@ -52,34 +63,44 @@ steps:
 # Step 1.5 – Build and Push Docker Images (Backend & Frontend)
 # -------------------------------------------------
 - bash: |
-    # Locate Dockerfiles and build contexts for this codebase
-    BACKEND_DOCKERFILE=""
-    BACKEND_BUILD_CONTEXT=""
-    FRONTEND_DOCKERFILE=""
-    FRONTEND_BUILD_CONTEXT=""
+    # Locate Dockerfiles and build contexts from configuration
+    BACKEND_DOCKERFILE_PATH=""
+    BACKEND_BUILD_CONTEXT_PATH=""
+    FRONTEND_DOCKERFILE_PATH=""
+    FRONTEND_BUILD_CONTEXT_PATH=""
     
-    # Backend is at root level
-    if [ -f "$(Build.SourcesDirectory)/Dockerfile" ] && [ -d "$(Build.SourcesDirectory)/packages" ]; then
-      BACKEND_DOCKERFILE="$(Build.SourcesDirectory)/Dockerfile"
-      BACKEND_BUILD_CONTEXT="$(Build.SourcesDirectory)"
-      echo "✓ Backend Dockerfile found at root with packages folder"
+    # Backend validation
+    BACKEND_DOCKER="$(Build.SourcesDirectory)/$(BACKEND_DOCKERFILE)"
+    BACKEND_CTX="$(Build.SourcesDirectory)/$(BACKEND_CONTEXT)"
+    BACKEND_VALID="$(Build.SourcesDirectory)/$(BACKEND_VALIDATION_DIR)"
+    
+    if [ -f "$BACKEND_DOCKER" ] && [ -d "$BACKEND_VALID" ]; then
+      BACKEND_DOCKERFILE_PATH="$BACKEND_DOCKER"
+      BACKEND_BUILD_CONTEXT_PATH="$BACKEND_CTX"
+      echo "✓ Backend Dockerfile found: $(BACKEND_DOCKERFILE)"
+      echo "✓ Backend context: $(BACKEND_CONTEXT)"
     else
-      echo "✗ Backend Dockerfile not found or packages folder missing"
+      echo "✗ Backend Dockerfile not found at: $(BACKEND_DOCKERFILE)"
+      echo "✗ Or validation directory missing: $(BACKEND_VALIDATION_DIR)"
     fi
     
-    # Frontend is in frontend/ directory
-    if [ -f "$(Build.SourcesDirectory)/frontend/Dockerfile" ]; then
-      FRONTEND_DOCKERFILE="$(Build.SourcesDirectory)/frontend/Dockerfile"
-      FRONTEND_BUILD_CONTEXT="$(Build.SourcesDirectory)/frontend"
-      echo "✓ Frontend Dockerfile found in frontend/"
+    # Frontend validation
+    FRONTEND_DOCKER="$(Build.SourcesDirectory)/$(FRONTEND_DOCKERFILE)"
+    FRONTEND_CTX="$(Build.SourcesDirectory)/$(FRONTEND_CONTEXT)"
+    
+    if [ -f "$FRONTEND_DOCKER" ]; then
+      FRONTEND_DOCKERFILE_PATH="$FRONTEND_DOCKER"
+      FRONTEND_BUILD_CONTEXT_PATH="$FRONTEND_CTX"
+      echo "✓ Frontend Dockerfile found: $(FRONTEND_DOCKERFILE)"
+      echo "✓ Frontend context: $(FRONTEND_CONTEXT)"
     else
-      echo "✗ Frontend Dockerfile not found"
+      echo "✗ Frontend Dockerfile not found at: $(FRONTEND_DOCKERFILE)"
     fi
     
-    echo "##vso[task.setvariable variable=BACKEND_DOCKERFILE]$BACKEND_DOCKERFILE"
-    echo "##vso[task.setvariable variable=BACKEND_BUILD_CONTEXT]$BACKEND_BUILD_CONTEXT"
-    echo "##vso[task.setvariable variable=FRONTEND_DOCKERFILE]$FRONTEND_DOCKERFILE"
-    echo "##vso[task.setvariable variable=FRONTEND_BUILD_CONTEXT]$FRONTEND_BUILD_CONTEXT"
+    echo "##vso[task.setvariable variable=BACKEND_DOCKERFILE_PATH]$BACKEND_DOCKERFILE_PATH"
+    echo "##vso[task.setvariable variable=BACKEND_BUILD_CONTEXT_PATH]$BACKEND_BUILD_CONTEXT_PATH"
+    echo "##vso[task.setvariable variable=FRONTEND_DOCKERFILE_PATH]$FRONTEND_DOCKERFILE_PATH"
+    echo "##vso[task.setvariable variable=FRONTEND_BUILD_CONTEXT_PATH]$FRONTEND_BUILD_CONTEXT_PATH"
   displayName: 'Step 1.5.0 - Locate Dockerfiles and Build Contexts'
  
 - task: Docker@2
@@ -87,22 +108,22 @@ steps:
   name: BuildBackend
   inputs:
     command: 'buildAndPush'
-    containerRegistry: 'svai-dev-acr_supportingtools_conn'
-    repository: 'ap-command-center'
-    Dockerfile: '$(BACKEND_DOCKERFILE)'
-    buildContext: '$(BACKEND_BUILD_CONTEXT)'
+    containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+    repository: '$(BACKEND_REPOSITORY)'
+    Dockerfile: '$(BACKEND_DOCKERFILE_PATH)'
+    buildContext: '$(BACKEND_BUILD_CONTEXT_PATH)'
     tags: |
       $(GenerateTag.TAG_NAME)
       api-$(GenerateTag.TAG_NAME)
       latest
-  condition: and(succeeded(), ne(variables['BACKEND_DOCKERFILE'], ''))
+  condition: and(succeeded(), ne(variables['BACKEND_DOCKERFILE_PATH'], ''))
  
 - bash: |
     echo "=== Detecting Azure Container Registry URL ==="
     
     # Method 1: Check docker images for the pushed image
     echo "Checking local Docker images..."
-    FULL_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "ap-command-center" | head -1)
+    FULL_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "$(BACKEND_REPOSITORY)" | head -1)
     echo "Found image: $FULL_IMAGE"
     
     # Extract registry URL (everything before the first /)
@@ -150,15 +171,15 @@ steps:
   displayName: 'Step 1.5.2 - Build and Push Frontend UI Image'
   inputs:
     command: 'buildAndPush'
-    containerRegistry: 'svai-dev-acr_supportingtools_conn'
-    repository: 'ap-command-center-frontend'
-    Dockerfile: '$(FRONTEND_DOCKERFILE)'
-    buildContext: '$(FRONTEND_BUILD_CONTEXT)'
+    containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+    repository: '$(FRONTEND_REPOSITORY)'
+    Dockerfile: '$(FRONTEND_DOCKERFILE_PATH)'
+    buildContext: '$(FRONTEND_BUILD_CONTEXT_PATH)'
     tags: |
       $(GenerateTag.TAG_NAME)
       ui-$(GenerateTag.TAG_NAME)
       latest
-  condition: and(succeeded(), ne(variables['FRONTEND_DOCKERFILE'], ''))
+  condition: and(succeeded(), ne(variables['FRONTEND_DOCKERFILE_PATH'], ''))
  
 # -------------------------------------------------
 # Step 2 – Generate Kubernetes Resources
@@ -187,9 +208,9 @@ steps:
     echo "Using CLEAN_BRANCH: $CLEAN_BRANCH"
     echo "Using SANITIZED_BRANCH: $SANITIZED_BRANCH for deployment names"
 
-    # Create dynamic deployment names
-    FRONTEND_DEPLOYMENT="${SANITIZED_BRANCH}-ui"
-    API_DEPLOYMENT="${SANITIZED_BRANCH}-api"
+    # Create dynamic deployment names from config
+    FRONTEND_DEPLOYMENT="${SANITIZED_BRANCH}$(FRONTEND_SUFFIX)"
+    API_DEPLOYMENT="${SANITIZED_BRANCH}$(BACKEND_SUFFIX)"
 
     echo "Frontend Deployment Name: $FRONTEND_DEPLOYMENT"
     echo "API Deployment Name: $API_DEPLOYMENT"
@@ -288,12 +309,12 @@ steps:
     kind: Deployment
     metadata:
       name: ${FRONTEND_DEPLOYMENT}
-      namespace: apcc
+      namespace: $(K8S_NAMESPACE)
       labels:
         app: ${FRONTEND_DEPLOYMENT}
         branch: ${SANITIZED_BRANCH}
     spec:
-      replicas: 1
+      replicas: $(FRONTEND_REPLICAS)
       selector:
         matchLabels:
           app: ${FRONTEND_DEPLOYMENT}
@@ -308,40 +329,40 @@ steps:
         spec:
           containers:
           - name: ${FRONTEND_DEPLOYMENT}
-            image: ${ACR_URL}/ap-command-center-frontend:${TAG_NAME}
+            image: ${ACR_URL}/$(FRONTEND_REPOSITORY):${TAG_NAME}
             env:
     $(generate_k8s_env_vars "${FRONTEND_ENV_VARS[@]}")
             resources: {}
             terminationMessagePath: /dev/termination-log
             terminationMessagePolicy: File
-            imagePullPolicy: Always
+            imagePullPolicy: $(FRONTEND_IMAGE_PULL_POLICY)
             ports:
-            - containerPort: 3000
+            - containerPort: $(FRONTEND_PORT)
           restartPolicy: Always
-          terminationGracePeriodSeconds: 30
+          terminationGracePeriodSeconds: $(TERMINATION_GRACE_PERIOD)
           dnsPolicy: ClusterFirst
           securityContext: {}
           imagePullSecrets:
-          - name: suptools-acr
+          - name: $(K8S_IMAGE_PULL_SECRET)
           schedulerName: default-scheduler
       strategy:
         type: RollingUpdate
         rollingUpdate:
-          maxUnavailable: 25%
-          maxSurge: 25%
-      revisionHistoryLimit: 10
-      progressDeadlineSeconds: 600
+          maxUnavailable: $(MAX_UNAVAILABLE)
+          maxSurge: $(MAX_SURGE)
+      revisionHistoryLimit: $(REVISION_HISTORY_LIMIT)
+      progressDeadlineSeconds: $(PROGRESS_DEADLINE_SECONDS)
     ---
     apiVersion: apps/v1
     kind: Deployment
     metadata:
       name: ${API_DEPLOYMENT}
-      namespace: apcc
+      namespace: $(K8S_NAMESPACE)
       labels:
         app: ${API_DEPLOYMENT}
         branch: ${SANITIZED_BRANCH}
     spec:
-      replicas: 1
+      replicas: $(BACKEND_REPLICAS)
       selector:
         matchLabels:
           app: ${API_DEPLOYMENT}
@@ -354,29 +375,29 @@ steps:
         spec:
           containers:
           - name: ${API_DEPLOYMENT}
-            image: ${ACR_URL}/ap-command-center:${TAG_NAME}
+            image: ${ACR_URL}/$(BACKEND_REPOSITORY):${TAG_NAME}
             env:
     $(generate_k8s_env_vars "${BACKEND_ENV_VARS[@]}")
             resources: {}
             terminationMessagePath: /dev/termination-log
             terminationMessagePolicy: File
-            imagePullPolicy: IfNotPresent
+            imagePullPolicy: $(BACKEND_IMAGE_PULL_POLICY)
             ports:
-            - containerPort: 8000
+            - containerPort: $(BACKEND_PORT)
           restartPolicy: Always
-          terminationGracePeriodSeconds: 30
+          terminationGracePeriodSeconds: $(TERMINATION_GRACE_PERIOD)
           dnsPolicy: ClusterFirst
           securityContext: {}
           imagePullSecrets:
-          - name: suptools-acr
+          - name: $(K8S_IMAGE_PULL_SECRET)
           schedulerName: default-scheduler
       strategy:
         type: RollingUpdate
         rollingUpdate:
-          maxUnavailable: 25%
-          maxSurge: 25%
-      revisionHistoryLimit: 10
-      progressDeadlineSeconds: 600
+          maxUnavailable: $(MAX_UNAVAILABLE)
+          maxSurge: $(MAX_SURGE)
+      revisionHistoryLimit: $(REVISION_HISTORY_LIMIT)
+      progressDeadlineSeconds: $(PROGRESS_DEADLINE_SECONDS)
     EOF
  
     # Create Kubernetes service file
@@ -385,51 +406,51 @@ steps:
     kind: Service
     metadata:
       name: ${FRONTEND_DEPLOYMENT}-service
-      namespace: apcc
+      namespace: $(K8S_NAMESPACE)
       labels:
         app: ${FRONTEND_DEPLOYMENT}
         branch: ${SANITIZED_BRANCH}
     spec:
-      type: ClusterIP
+      type: $(SERVICE_TYPE)
       ports:
         - name: ${FRONTEND_DEPLOYMENT}-port
           protocol: TCP
-          port: 3000
-          targetPort: 3000
+          port: $(FRONTEND_PORT)
+          targetPort: $(FRONTEND_PORT)
       selector:
         app: ${FRONTEND_DEPLOYMENT}
         svc: ${FRONTEND_DEPLOYMENT}-service
-      sessionAffinity: None
+      sessionAffinity: $(SESSION_AFFINITY)
       ipFamilies:
         - IPv4
-      ipFamilyPolicy: SingleStack
-      internalTrafficPolicy: Cluster
- 
- 
+      ipFamilyPolicy: $(IP_FAMILY_POLICY)
+      internalTrafficPolicy: $(INTERNAL_TRAFFIC_POLICY)
+
+
     ---
     apiVersion: v1
     kind: Service
     metadata:
       name: ${API_DEPLOYMENT}-service
-      namespace: apcc
+      namespace: $(K8S_NAMESPACE)
       labels:
         app: ${API_DEPLOYMENT}
         branch: ${SANITIZED_BRANCH}
     spec:
-      type: ClusterIP
+      type: $(SERVICE_TYPE)
       ports:
         - name: ${API_DEPLOYMENT}-port
           protocol: TCP
-          port: 8000
-          targetPort: 8000
+          port: $(BACKEND_PORT)
+          targetPort: $(BACKEND_PORT)
       selector:
         app: ${API_DEPLOYMENT}
         svc: ${API_DEPLOYMENT}-service
-      sessionAffinity: None
+      sessionAffinity: $(SESSION_AFFINITY)
       ipFamilies:
         - IPv4
-      ipFamilyPolicy: SingleStack
-      internalTrafficPolicy: Cluster
+      ipFamilyPolicy: $(IP_FAMILY_POLICY)
+      internalTrafficPolicy: $(INTERNAL_TRAFFIC_POLICY)
     EOF
  
     echo "Kubernetes deployment and service files created successfully."
@@ -442,22 +463,22 @@ steps:
   displayName: 'Step 2.5 - Deploy Deployment to AKS'
   inputs:
     connectionType: 'Azure Resource Manager'
-    azureSubscriptionEndpoint: 'svai-dev-2-aks-democlustersvai-svc-conn'
-    azureResourceGroup: 'supervity-demo'
-    kubernetesCluster: 'demo_cluster_svai'
-    namespace: 'apcc'
+    azureSubscriptionEndpoint: '$(K8S_SUBSCRIPTION_ENDPOINT)'
+    azureResourceGroup: '$(K8S_RESOURCE_GROUP)'
+    kubernetesCluster: '$(K8S_CLUSTER_NAME)'
+    namespace: '$(K8S_NAMESPACE)'
     command: 'apply'
     arguments: '-f k8s-deployment.yaml'
   condition: succeeded()
- 
+
 - task: Kubernetes@1
   displayName: 'Step 2.6 - Deploy Service to AKS'
   inputs:
     connectionType: 'Azure Resource Manager'
-    azureSubscriptionEndpoint: 'svai-dev-2-aks-democlustersvai-svc-conn'
-    azureResourceGroup: 'supervity-demo'
-    kubernetesCluster: 'demo_cluster_svai'
-    namespace: 'apcc'
+    azureSubscriptionEndpoint: '$(K8S_SUBSCRIPTION_ENDPOINT)'
+    azureResourceGroup: '$(K8S_RESOURCE_GROUP)'
+    kubernetesCluster: '$(K8S_CLUSTER_NAME)'
+    namespace: '$(K8S_NAMESPACE)'
     command: 'apply'
     arguments: '-f k8s-service.yaml'
   condition: succeeded()
@@ -475,56 +496,57 @@ steps:
  
     # Construct unique ingress name
     INGRESS_NAME="${SANITIZED_BRANCH}-ingress"
- 
-    # Define the base host for the ingress
-    # IMPORTANT: Replace 'your.domain.com' with your actual domain or a placeholder for dynamic resolution
-    INGRESS_HOST="demo.supervity.ai"
-    FRONTEND_PATH_PREFIX="/apcc-${CLEAN_BRANCH}" # Use CLEAN_BRANCH for path as it's more readable
-    API_PATH_PREFIX="/apcc-${CLEAN_BRANCH}/api"
- 
-    FRONTEND_SERVICE_NAME="${SANITIZED_BRANCH}-ui-service"
-    API_SERVICE_NAME="${SANITIZED_BRANCH}-api-service"
+
+    # Define the base host and paths from config
+    INGRESS_HOST_VAL="$(INGRESS_HOST)"
+    # Replace ${BRANCH} placeholder in path prefix template
+    PATH_PREFIX_TEMPLATE="$(INGRESS_PATH_PREFIX)"
+    FRONTEND_PATH_PREFIX="${PATH_PREFIX_TEMPLATE/\$\{BRANCH\}/${CLEAN_BRANCH}}"
+    API_PATH_PREFIX="${FRONTEND_PATH_PREFIX}$(INGRESS_API_PATH_SUFFIX)"
+
+    FRONTEND_SERVICE_NAME="${SANITIZED_BRANCH}$(FRONTEND_SUFFIX)-service"
+    API_SERVICE_NAME="${SANITIZED_BRANCH}$(BACKEND_SUFFIX)-service"
  
     echo "Creating Ingress: $INGRESS_NAME"
-    echo "Host: $INGRESS_HOST"
+    echo "Host: $INGRESS_HOST_VAL"
     echo "Frontend Path: $FRONTEND_PATH_PREFIX"
     echo "API Path: $API_PATH_PREFIX"
     echo "Frontend Service: $FRONTEND_SERVICE_NAME"
     echo "API Service: $API_SERVICE_NAME"
- 
+
     # Create Kubernetes Ingress file
     cat <<EOF > k8s-ingress.yaml
     apiVersion: networking.k8s.io/v1
     kind: Ingress
     metadata:
       name: ${INGRESS_NAME}
-      namespace: apcc # Ensure this matches your namespace
+      namespace: $(K8S_NAMESPACE)
       labels:
         app.kubernetes.io/branch: ${SANITIZED_BRANCH}
     spec:
-      ingressClassName: nginx
+      ingressClassName: $(INGRESS_CLASS_NAME)
       tls:
         - hosts:
-            - demo.supervity.ai
-          secretName: cm-certs
+            - ${INGRESS_HOST_VAL}
+          secretName: $(INGRESS_TLS_SECRET)
       rules:
-      - host: ${INGRESS_HOST}
+      - host: ${INGRESS_HOST_VAL}
         http:
           paths:
           - path: ${FRONTEND_PATH_PREFIX}
-            pathType: Prefix
+            pathType: $(INGRESS_PATH_TYPE)
             backend:
               service:
                 name: ${FRONTEND_SERVICE_NAME}
                 port:
-                  number: 3000
+                  number: $(FRONTEND_PORT)
           - path: ${API_PATH_PREFIX}
-            pathType: Prefix
+            pathType: $(INGRESS_PATH_TYPE)
             backend:
               service:
                 name: ${API_SERVICE_NAME}
                 port:
-                  number: 8000
+                  number: $(BACKEND_PORT)
     EOF
  
     echo "Kubernetes Ingress file created successfully."
@@ -538,10 +560,10 @@ steps:
   displayName: 'Step 4.1 - Apply Ingress to AKS'
   inputs:
     connectionType: 'Azure Resource Manager'
-    azureSubscriptionEndpoint: 'svai-dev-2-aks-democlustersvai-svc-conn'
-    azureResourceGroup: 'supervity-demo' # Replace with your resource group
-    kubernetesCluster: 'demo_cluster_svai' # Replace with your cluster name
-    namespace: 'apcc' # Ensure this matches your namespace
+    azureSubscriptionEndpoint: '$(K8S_SUBSCRIPTION_ENDPOINT)'
+    azureResourceGroup: '$(K8S_RESOURCE_GROUP)'
+    kubernetesCluster: '$(K8S_CLUSTER_NAME)'
+    namespace: '$(K8S_NAMESPACE)'
     command: 'apply'
     arguments: '-f k8s-ingress.yaml'
   condition: succeeded()

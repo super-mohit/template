@@ -1,0 +1,173 @@
+# ============================================
+# DEPLOYMENT CONFIGURATION
+# ============================================
+# This file contains all deployment-specific configuration
+# Update this file instead of modifying azure-pipeline.yml directly
+#
+# 🔴 PRIORITY GUIDE:
+#   🔴 MUST EDIT FIRST    - Required for your project to work
+#   🟡 SHOULD EDIT SOON   - Commonly changed, project-specific
+#   🟢 CAN EDIT LATER     - Optional, has good defaults
+#   ℹ️  RARELY CHANGE     - Usually keep as-is unless you know what you're doing
+#
+# ============================================
+
+# ============================================
+# PROJECT IDENTITY
+# ============================================
+# 🟡 SHOULD EDIT SOON - Update with your actual project name
+project:
+  name: "procurement-template"       # Full project name (for documentation)
+  short_name: "proc-template"        # Short name for resource naming (keep it simple)
+
+# ============================================
+# DOCKER / ACR CONFIGURATION
+# ============================================
+# 🔴 MUST EDIT FIRST - These MUST match your Azure DevOps setup
+docker:
+  # 🔴 MUST EDIT: Azure Container Registry service connection name
+  # Find this in: Azure DevOps → Project Settings → Service connections
+  # This is the NAME of your ACR connection (not the URL)
+  acr_service_connection: "svai-dev-acr_supportingtools_conn"
+  
+  # 🔴 MUST EDIT: Repository names in your Azure Container Registry
+  # These will be the image names: yourregistry.azurecr.io/REPO_NAME:tag
+  # Use lowercase, alphanumeric, and hyphens only
+  backend_repository: "ap-command-center"           # Change to your backend repo name
+  frontend_repository: "ap-command-center-frontend" # Change to your frontend repo name
+  
+  # 🟢 CAN EDIT LATER: Additional image tags (latest is always added automatically)
+  additional_tags:
+    - "stable"
+
+# ============================================
+# KUBERNETES / AKS CONFIGURATION
+# ============================================
+# 🔴 MUST EDIT FIRST - These MUST match your Azure Kubernetes setup
+kubernetes:
+  # 🔴 MUST EDIT: Azure subscription service connection for AKS
+  # Find this in: Azure DevOps → Project Settings → Service connections
+  # This is the NAME of your AKS/ARM connection
+  subscription_endpoint: "svai-dev-2-aks-democlustersvai-svc-conn"
+  
+  # 🔴 MUST EDIT: Your AKS cluster details
+  # Find these in: Azure Portal → Your AKS Cluster → Overview
+  resource_group: "supervity-demo"      # Azure resource group containing your AKS cluster
+  cluster_name: "demo_cluster_svai"     # Name of your AKS cluster
+  
+  # 🟡 SHOULD EDIT SOON: Kubernetes namespace for your deployments
+  # This is where your pods will be deployed. Create it if it doesn't exist.
+  # Use lowercase letters, numbers, and hyphens only
+  namespace: "apcc"
+  
+  # 🔴 MUST EDIT: Image pull secret name (must exist in your namespace)
+  # This secret allows K8s to pull images from your private ACR
+  # Create it with: kubectl create secret docker-registry <name> --docker-server=<acr> ...
+  image_pull_secret: "suptools-acr"
+  
+  # Deployment configuration
+  deployment:
+    # ℹ️ RARELY CHANGE: Suffixes for deployment names (branch-name + suffix)
+    # Example: feature-branch-ui, feature-branch-api
+    frontend_suffix: "-ui"
+    backend_suffix: "-api"
+    
+    # 🟡 SHOULD EDIT SOON: Number of pod replicas for each service
+    # Start with 1 for testing, increase for production (2-3 recommended)
+    frontend_replicas: 1      # How many frontend pods to run
+    backend_replicas: 1       # How many backend pods to run
+    
+    # 🟢 CAN EDIT LATER: When to pull Docker images
+    # Always = pull every time (good for testing, uses more bandwidth)
+    # IfNotPresent = only pull if not cached (good for production)
+    frontend_image_pull_policy: "Always"       # Recommended: "Always" for dev, "IfNotPresent" for prod
+    backend_image_pull_policy: "IfNotPresent"  # Backend changes less frequently
+    
+    # 🟢 CAN EDIT LATER: Rolling update strategy
+    # Controls how pods are replaced during updates
+    max_unavailable: "25%"    # Max 25% of pods can be down during update
+    max_surge: "25%"          # Max 25% extra pods during update
+    
+    # ℹ️ RARELY CHANGE: Other Kubernetes settings
+    revision_history_limit: 10           # How many old ReplicaSets to keep
+    progress_deadline_seconds: 600       # Max time for deployment to make progress
+    termination_grace_period: 30         # Seconds to wait before force-killing pods
+
+# ============================================
+# SERVICE CONFIGURATION
+# ============================================
+# 🟡 SHOULD EDIT SOON: Service and port configuration
+service:
+  # ℹ️ RARELY CHANGE: Service type (ClusterIP = internal only, LoadBalancer = external)
+  # Use ClusterIP with Ingress (recommended), or LoadBalancer for direct external access
+  type: "ClusterIP"
+  
+  # 🟡 SHOULD EDIT IF NEEDED: Container ports
+  # These MUST match the ports your apps listen on (check Dockerfile EXPOSE)
+  frontend_port: 3000       # Port your Next.js app listens on
+  backend_port: 8000        # Port your FastAPI/backend listens on
+  
+  # ℹ️ RARELY CHANGE: Service networking configuration
+  session_affinity: "None"                  # Stick sessions to same pod? Usually "None"
+  ip_family_policy: "SingleStack"           # IPv4 only (standard)
+  internal_traffic_policy: "Cluster"        # Route to any pod in cluster
+
+# ============================================
+# INGRESS CONFIGURATION
+# ============================================
+# 🔴 MUST EDIT: Ingress exposes your app to the internet
+ingress:
+  # ℹ️ RARELY CHANGE: Ingress controller class
+  # Check what's installed in your cluster: kubectl get ingressclass
+  class_name: "nginx"       # Common options: nginx, traefik, azure-application-gateway
+  
+  # 🔴 MUST EDIT: Your domain name
+  # This is the domain where your app will be accessible
+  # Make sure DNS points to your cluster's ingress IP
+  host: "demo.supervity.ai"
+  
+  # 🟡 SHOULD EDIT SOON: URL path prefix template
+  # ${BRANCH} is automatically replaced with your git branch name
+  # Example: /apcc-main, /apcc-feature-auth, etc.
+  path_prefix: "/apcc-${BRANCH}"
+  
+  # 🔴 MUST EDIT: TLS/HTTPS configuration
+  tls:
+    enabled: true             # Set to false if you don't have TLS/HTTPS
+    secret_name: "cm-certs"   # Name of K8s secret containing TLS certificate
+                              # Create with: kubectl create secret tls <name> --cert=... --key=...
+  
+  # ℹ️ RARELY CHANGE: Path matching type
+  # Prefix = matches /path and /path/anything
+  # Exact = only matches /path exactly
+  path_type: "Prefix"
+  
+  # 🟢 CAN EDIT LATER: API path suffix (added after path_prefix)
+  # Frontend: /apcc-branch, API: /apcc-branch/api
+  api_path_suffix: "/api"
+
+# ============================================
+# LABELS AND ANNOTATIONS
+# ============================================
+# ℹ️ RARELY CHANGE: Kubernetes label keys for resource organization
+labels:
+  # Common labels applied to all resources (used for filtering and selection)
+  app_label_key: "app"          # Label key for app name
+  branch_label_key: "branch"    # Label key for git branch
+  service_label_key: "svc"      # Label key for service identification
+
+# ============================================
+# BUILD CONFIGURATION
+# ============================================
+# 🟡 SHOULD EDIT IF NEEDED: Docker build paths
+# IMPORTANT: These paths are relative to your repository root
+build:
+  # Backend Docker configuration
+  backend_dockerfile: "Dockerfile"          # Path to backend Dockerfile
+  backend_context: "."                      # Build context (usually repo root)
+  backend_validation_dir: "packages"        # Directory that must exist to validate backend
+  
+  # Frontend Docker configuration
+  frontend_dockerfile: "frontend/Dockerfile"  # Path to frontend Dockerfile
+  frontend_context: "frontend"                # Build context (usually frontend folder)
+
