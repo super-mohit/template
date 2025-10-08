@@ -1,7 +1,7 @@
 trigger:
   branches:
     include:
-      - 'test-deploy'
+      - '*'  # Trigger on all branches
  
  
 pool:
