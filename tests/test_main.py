@@ -1,10 +1,12 @@
 # tests/test_main.py
 import pytest
 from httpx import AsyncClient
+
 from app.main import app
 
 # Mark all tests in this file as async
 pytestmark = pytest.mark.asyncio
+
 
 async def test_health_check():
     """
@@ -15,6 +17,7 @@ async def test_health_check():
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
+
 async def test_unauthorized_access():
     """
     Tests that protected endpoints require authentication.
@@ -23,8 +26,9 @@ async def test_unauthorized_access():
         response = await ac.get("/api/test")
     assert response.status_code == 401
 
+
 # Additional tests would include:
 # - Database integration tests
-# - Authorization engine tests  
+# - Authorization engine tests
 # - API endpoint tests with mocked authentication
 # - Model validation tests

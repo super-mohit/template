@@ -13,7 +13,7 @@ async function apiClient(endpoint: string, options: RequestInit = {}) {
   const session = await getSession()
 
   const headers = new Headers(options.headers || {})
-  
+
   if (session?.accessToken) {
     headers.set('Authorization', `Bearer ${session.accessToken}`)
   }

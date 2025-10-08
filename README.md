@@ -51,21 +51,38 @@ Follow these steps to get your local development environment running:
     cp .env.example .env
     ```
 
-3.  **Configure Secrets**
-    Open the newly created `.env` file. You must generate secrets for `KEYCLOAK_CLIENT_SECRET` and `NEXTAUTH_SECRET`. You can generate a strong secret with this command:
+3.  **Configure Initial Secrets**
+    Open the newly created `.env` file. You must generate a secret for `NEXTAUTH_SECRET`. You can generate a strong secret with this command:
     ```bash
     # Run this in your terminal and paste the output into the .env file
     openssl rand -base64 32
     ```
-    *Note: All other variables have sensible defaults for local development.*
+    *Note: Leave `KEYCLOAK_CLIENT_SECRET` empty for now - you'll configure it in the next step.*
 
-4.  **Launch the Application**
-    This single command will build the Docker images, start all services, and set up your environment.
+4.  **Launch the Application (First Time)**
+    This single command will build the Docker images, start all services, and set up your environment. The startup process automatically waits for the database to be ready before running migrations.
     ```bash
     make up
     ```
 
-5.  **Access Your Services**
+5.  **Configure Keycloak Client Secret**
+    After the first startup, you need to retrieve the Keycloak client secret and add it to your `.env` file:
+    
+    a. Open the Keycloak Admin Console at [http://localhost:8080](http://localhost:8080) and log in with credentials: `admin` / `admin`
+    
+    b. Navigate to: **Clients** → **super-client-dnh-dev-0001** → **Credentials** tab
+    
+    c. Copy the **Client Secret** value
+    
+    d. Open your `.env` file and paste the secret into `KEYCLOAK_CLIENT_SECRET=`
+    
+    e. Restart the services with a clean slate:
+    ```bash
+    docker-compose down -v
+    make up
+    ```
+
+6.  **Access Your Services**
     Your full application stack is now running!
     *   **Frontend Application:** [http://localhost:3001/app1](http://localhost:3001/app1)
     *   **Backend API Docs:** [http://localhost:8001/docs](http://localhost:8001/docs)
@@ -104,7 +121,9 @@ Use these shortcuts to manage your development environment:
 ├── gunicorn/             # Gunicorn configuration files for the backend
 ├── keycloak/             # Keycloak realm configuration and data
 ├── packages/             # Python dependency lists
+├── utils/                # Shared utilities (database helpers, etc.)
 ├── tests/                # Backend test suite
+├── start_gunicorn.sh     # Unified startup script (handles dev/prod modes)
 ├── docker-compose.yml    # Orchestrates all services
 ├── Makefile              # Command shortcuts for development
 └── README.md             # You are here!

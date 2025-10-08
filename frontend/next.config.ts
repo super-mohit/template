@@ -1,14 +1,14 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   // --- BASE_PATH ADDITION START ---
-  basePath: process.env.NEXT_PUBLIC_BASE_PATH || "",
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   // --- BASE_PATH ADDITION END ---
 
   env: {
     NEXT_PUBLIC_API_URL:
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001",
-    INTERNAL_API_URL: process.env.INTERNAL_API_URL || "http://backend:8000",
+      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001',
+    INTERNAL_API_URL: process.env.INTERNAL_API_URL || 'http://backend:8000',
   },
   serverExternalPackages: [],
 
@@ -21,9 +21,9 @@ const nextConfig: NextConfig = {
   },
 
   // Development optimizations
-  ...(process.env.NODE_ENV === "development" && {
+  ...(process.env.NODE_ENV === 'development' && {
     experimental: {
-      optimizePackageImports: ["@radix-ui/react-icons", "lucide-react"],
+      optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
     },
 
     // Optimize bundling for development
@@ -33,12 +33,12 @@ const nextConfig: NextConfig = {
           poll: 1000,
           aggregateTimeout: 300,
           ignored: /node_modules/,
-        };
-        config.infrastructureLogging = { level: "error" };
+        }
+        config.infrastructureLogging = { level: 'error' }
       }
-      return config;
+      return config
     },
   }),
-};
+}
 
-export default nextConfig;
+export default nextConfig

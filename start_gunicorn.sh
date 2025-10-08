@@ -1,17 +1,25 @@
 #!/bin/sh
 
-# This script is the entrypoint for the production Docker container.
-# It's responsible for applying database migrations and starting the Gunicorn server.
+# Unified entrypoint script for the application
+# Handles both development and production environments
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
+set -e  # Exit immediately if a command exits with a non-zero status
 
-echo "Running Database Migrations..."
-# Run alembic migrations. The 'alembic' command is available in the PATH
-# because we've added the virtual environment's bin directory.
+echo "🚀 Starting application..."
+
+# Wait for database to be ready
+echo "🔍 Waiting for database..."
+python utils/wait_for_db.py
+
+# Run database migrations
+echo "📄 Running database migrations..."
 alembic upgrade head
 
-echo "Starting Gunicorn Server..."
-# Start the Gunicorn server, binding to all interfaces on port 8000.
-# The configuration is loaded from the production config file.
-gunicorn -c gunicorn/prod.py app.main:app
+# Determine which gunicorn config to use based on environment
+if [ "${APP_ENV}" = "production" ]; then
+    echo "🏭 Starting production server..."
+    exec gunicorn -c gunicorn/prod.py app.main:app
+else
+    echo "🛠️  Starting development server..."
+    exec gunicorn -c gunicorn/dev.py app.main:app
+fi

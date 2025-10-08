@@ -13,6 +13,11 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-app_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.4
@@ -33,19 +38,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: gunicorn -c gunicorn/dev.py app.main:app
     volumes:
       - ./app:/app/app
-      - ./alembic:/app/alembic  # Mount alembic directory
+      - ./utils:/app/utils  # Mount utils directory
+      - ./alembic:/app/alembic  # Mount alembic directory  
       - ./alembic.ini:/app/alembic.ini  # Mount alembic config file
     ports:
       - "8001:8000"
-    # All environment variables are now sourced from the .env file
+    environment:
+      - APP_ENV=development  # This tells entrypoint.sh to use development mode
     env_file:
       - .env
     depends_on:
-      - keycloak
-      - postgres  # Add dependency on postgres
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
     networks:
       - app-network
     restart: unless-stopped
@@ -66,6 +74,7 @@ services:
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
         - NEXTAUTH_URL=${NEXTAUTH_URL}
         - SUPERVITY_AUTH_DEBUG=${SUPERVITY_AUTH_DEBUG}
+        - NEXT_PUBLIC_KEYCLOAK_URL=${NEXT_PUBLIC_KEYCLOAK_URL}
     ports:
       - "3001:3000"
     # Runtime environment variables (`environment` or `env_file`) are available

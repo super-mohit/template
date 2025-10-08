@@ -25,12 +25,12 @@ RUN mkdir -p app gunicorn documents scripts alembic generated_documents document
 COPY --from=builder /opt/venv /opt/venv
 COPY app ./app/
 COPY gunicorn ./gunicorn/
+COPY utils ./utils/
 COPY start_gunicorn.sh ./
 
 RUN chmod -R 755 /app/*/
-# The chmod command will fail if start_gunicorn.sh doesn't exist,
-# so we ignore errors to make it optional.
-RUN chmod +x start_gunicorn.sh 2>/dev/null || true
+# Make scripts executable
+RUN chmod +x start_gunicorn.sh utils/wait_for_db.py 2>/dev/null || true
 
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONPATH="/app"
@@ -40,6 +40,5 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
 
 EXPOSE 8000
 
-# The default command to run the application, expecting start_gunicorn.sh.
-# This is typically overridden by docker-compose for local development.
+# The unified entrypoint handles both development and production
 ENTRYPOINT ["sh", "start_gunicorn.sh"]

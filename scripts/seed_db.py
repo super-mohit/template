@@ -1,6 +1,7 @@
 # scripts/seed_db.py
 import os
 import sys
+
 from sqlalchemy.orm import sessionmaker
 
 # Add the project root to the Python path
@@ -13,16 +14,23 @@ from app.models.item import Item
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 db = SessionLocal()
 
+
 def seed_data():
     """Populates the database with initial data."""
     try:
         print("Seeding initial data...")
-        
+
         # Check if items already exist
         if db.query(Item).count() == 0:
             print("Adding sample items...")
-            item1 = Item(name="First Sample Item", description="This is a test item from the seeder.")
-            item2 = Item(name="Second Sample Item", description="Another test item for demonstration.")
+            item1 = Item(
+                name="First Sample Item",
+                description="This is a test item from the seeder.",
+            )
+            item2 = Item(
+                name="Second Sample Item",
+                description="Another test item for demonstration.",
+            )
             db.add_all([item1, item2])
             db.commit()
             print("Sample items added.")
@@ -36,6 +44,7 @@ def seed_data():
         db.rollback()
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     print("--- Starting Database Seeding ---")

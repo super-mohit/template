@@ -1,7 +1,6 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -19,10 +18,12 @@ if config.config_file_name is not None:
 # Import the base and all models
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from app.core.database import Base
 from app.models import *  # Import all your models here
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -45,7 +46,7 @@ def run_migrations_offline() -> None:
     """
     url = config.get_main_option("sqlalchemy.url")
     if url is None:
-        url = os.environ.get('DATABASE_URL')
+        url = os.environ.get("DATABASE_URL")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -65,9 +66,9 @@ def run_migrations_online() -> None:
 
     """
     configuration = config.get_section(config.config_ini_section)
-    if 'sqlalchemy.url' not in configuration:
-        configuration['sqlalchemy.url'] = os.environ.get('DATABASE_URL')
-    
+    if "sqlalchemy.url" not in configuration:
+        configuration["sqlalchemy.url"] = os.environ.get("DATABASE_URL")
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
@@ -75,9 +76,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

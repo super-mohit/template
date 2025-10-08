@@ -1,6 +1,8 @@
 # app/models/item.py
 from sqlalchemy import Column, Integer, String
+
 from ..core.database import Base
+
 
 class Item(Base):
     __tablename__ = "items"

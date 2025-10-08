@@ -1,8 +1,8 @@
 # gunicorn/prod.py
 """Gunicorn *production* config file"""
 
-import os
 import multiprocessing
+import os
 
 # FastAPI ASGI application path
 wsgi_app = "app.main:app"

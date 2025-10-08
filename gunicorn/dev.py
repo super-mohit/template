@@ -1,7 +1,7 @@
 """Gunicorn *development* config file"""
 
-import os
 import multiprocessing
+import os
 
 # FastAPI ASGI application path in the pattern MODULE_NAME:VARIABLE_NAME
 wsgi_app = "app.main:app"  # Update "app" if your FastAPI instance is named differently
