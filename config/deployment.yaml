@@ -30,11 +30,10 @@ docker:
   # This is the NAME of your ACR connection (not the URL)
   acr_service_connection: "svai-dev-acr_supportingtools_conn"
   
-  # 🔴 MUST EDIT: Repository names in your Azure Container Registry
-  # These will be the image names: yourregistry.azurecr.io/REPO_NAME:tag
+  # 🔴 MUST EDIT: Repository name in your Azure Container Registry
+  # This will be used for both frontend and backend images with different tags
   # Use lowercase, alphanumeric, and hyphens only
-  backend_repository: "newtest"           # Change to your backend repo name
-  frontend_repository: "newtest-frontend" # Change to your frontend repo name
+  repository: "newtest"  # Single repository for both frontend and backend
   
   # 🟢 CAN EDIT LATER: Additional image tags (latest is always added automatically)
   additional_tags:

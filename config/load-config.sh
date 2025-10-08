@@ -33,8 +33,7 @@ export PROJECT_SHORT_NAME=$(get_yaml_value "short_name" "$CONFIG_FILE")
 
 # Docker/ACR
 export ACR_SERVICE_CONNECTION=$(get_yaml_value "acr_service_connection" "$CONFIG_FILE")
-export BACKEND_REPOSITORY=$(get_yaml_value "backend_repository" "$CONFIG_FILE")
-export FRONTEND_REPOSITORY=$(get_yaml_value "frontend_repository" "$CONFIG_FILE")
+export REPOSITORY=$(get_yaml_value "repository" "$CONFIG_FILE")
 
 # Kubernetes/AKS
 export K8S_SUBSCRIPTION_ENDPOINT=$(get_yaml_value "subscription_endpoint" "$CONFIG_FILE")
@@ -86,8 +85,7 @@ echo "✅ Configuration loaded successfully!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Project: $PROJECT_NAME ($PROJECT_SHORT_NAME)"
 echo "ACR Service Connection: $ACR_SERVICE_CONNECTION"
-echo "Backend Repository: $BACKEND_REPOSITORY"
-echo "Frontend Repository: $FRONTEND_REPOSITORY"
+echo "Repository: $REPOSITORY"
 echo "K8s Namespace: $K8S_NAMESPACE"
 echo "K8s Cluster: $K8S_CLUSTER_NAME"
 echo "Ingress Host: $INGRESS_HOST"
@@ -98,8 +96,7 @@ echo ""
 echo "##vso[task.setvariable variable=PROJECT_NAME]$PROJECT_NAME"
 echo "##vso[task.setvariable variable=PROJECT_SHORT_NAME]$PROJECT_SHORT_NAME"
 echo "##vso[task.setvariable variable=ACR_SERVICE_CONNECTION]$ACR_SERVICE_CONNECTION"
-echo "##vso[task.setvariable variable=BACKEND_REPOSITORY]$BACKEND_REPOSITORY"
-echo "##vso[task.setvariable variable=FRONTEND_REPOSITORY]$FRONTEND_REPOSITORY"
+echo "##vso[task.setvariable variable=REPOSITORY]$REPOSITORY"
 echo "##vso[task.setvariable variable=K8S_SUBSCRIPTION_ENDPOINT]$K8S_SUBSCRIPTION_ENDPOINT"
 echo "##vso[task.setvariable variable=K8S_RESOURCE_GROUP]$K8S_RESOURCE_GROUP"
 echo "##vso[task.setvariable variable=K8S_CLUSTER_NAME]$K8S_CLUSTER_NAME"

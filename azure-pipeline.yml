@@ -54,8 +54,7 @@ steps:
 # -------------------------------------------------
 - bash: |
     echo "Images will be pushed via service connection: $(ACR_SERVICE_CONNECTION)"
-    echo "Backend repository: $(BACKEND_REPOSITORY)"
-    echo "Frontend repository: $(FRONTEND_REPOSITORY)"
+    echo "Repository: $(REPOSITORY)"
     echo "After this pipeline runs, check the Docker@2 task output above to see the actual registry URL used."
   displayName: 'Step 1.4 - Docker Registry Info'
  
@@ -109,13 +108,13 @@ steps:
   inputs:
     command: 'buildAndPush'
     containerRegistry: '$(ACR_SERVICE_CONNECTION)'
-    repository: '$(BACKEND_REPOSITORY)'
+    repository: '$(REPOSITORY)'
     Dockerfile: '$(BACKEND_DOCKERFILE_PATH)'
     buildContext: '$(BACKEND_BUILD_CONTEXT_PATH)'
     tags: |
       $(GenerateTag.TAG_NAME)
       api-$(GenerateTag.TAG_NAME)
-      latest
+      latest-api
   condition: and(succeeded(), ne(variables['BACKEND_DOCKERFILE_PATH'], ''))
  
 - bash: |
@@ -123,7 +122,7 @@ steps:
     
     # Method 1: Check docker images for the pushed image
     echo "Checking local Docker images..."
-    FULL_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "$(BACKEND_REPOSITORY)" | head -1)
+    FULL_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "$(REPOSITORY)" | head -1)
     echo "Found image: $FULL_IMAGE"
     
     # Extract registry URL (everything before the first /)
@@ -172,13 +171,12 @@ steps:
   inputs:
     command: 'buildAndPush'
     containerRegistry: '$(ACR_SERVICE_CONNECTION)'
-    repository: '$(FRONTEND_REPOSITORY)'
+    repository: '$(REPOSITORY)'
     Dockerfile: '$(FRONTEND_DOCKERFILE_PATH)'
     buildContext: '$(FRONTEND_BUILD_CONTEXT_PATH)'
     tags: |
-      $(GenerateTag.TAG_NAME)
       ui-$(GenerateTag.TAG_NAME)
-      latest
+      latest-ui
   condition: and(succeeded(), ne(variables['FRONTEND_DOCKERFILE_PATH'], ''))
  
 # -------------------------------------------------
@@ -329,7 +327,7 @@ steps:
         spec:
           containers:
           - name: ${FRONTEND_DEPLOYMENT}
-            image: ${ACR_URL}/$(FRONTEND_REPOSITORY):${TAG_NAME}
+            image: ${ACR_URL}/$(REPOSITORY):ui-${TAG_NAME}
             env:
     $(generate_k8s_env_vars "${FRONTEND_ENV_VARS[@]}")
             resources: {}
@@ -375,7 +373,7 @@ steps:
         spec:
           containers:
           - name: ${API_DEPLOYMENT}
-            image: ${ACR_URL}/$(BACKEND_REPOSITORY):${TAG_NAME}
+            image: ${ACR_URL}/$(REPOSITORY):api-${TAG_NAME}
             env:
     $(generate_k8s_env_vars "${BACKEND_ENV_VARS[@]}")
             resources: {}
