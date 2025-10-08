@@ -92,6 +92,13 @@ Follow these steps to get your local development environment running:
     *   **Backend API Docs:** [http://localhost:8001/docs](http://localhost:8001/docs)
     *   **Keycloak Admin Console:** [http://localhost:8080](http://localhost:8080)
         *   **Admin Credentials:** `admin` / `admin`
+    *   **Demo Users for the App:**
+        *   **Admin User:**  
+            * Username: `admin`  
+            * Password: `password`
+        *   **Regular User:**  
+            * Username: `user`  
+            * Password: `password`
 
     The first time you run `make up`, Keycloak will import its configuration and the database will initialize. This may take a minute or two.
 
