@@ -1,0 +1,575 @@
+trigger:
+  branches:
+    include:
+      - 'test-deploy'
+ 
+ 
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+# -------------------------------------------------
+# Step 0 – Load Deployment Configuration
+# -------------------------------------------------
+- script: |
+    chmod +x $(Build.SourcesDirectory)/config/load-config.sh
+    source $(Build.SourcesDirectory)/config/load-config.sh $(Build.SourcesDirectory)/config/deployment.yaml
+  displayName: 'Step 0 - Load Deployment Configuration'
+  name: LoadConfig
+
+# -------------------------------------------------
+# Step 1 – Generate Tag Name (publish outputs)
+# -------------------------------------------------
+- script: |
+    # ---------- Gather data ----------
+    COMMIT_ID=$(git rev-parse --short=7 HEAD)
+    AUTHOR_NAME=$(git log -1 --pretty=format:"%an")
+    DATE=$(date +'%Y%m%d')
+ 
+    # Full branch reference (e.g. refs/heads/feature/foo)
+    CURRENT_BRANCH="$(Build.SourceBranchName)"
+    # Clean branch (without the refs/heads/ prefix) - kept for possible other uses
+    CLEAN_BRANCH=$(echo "$CURRENT_BRANCH" | sed 's|refs/heads/||')
+ 
+    # Use Azure DevOps built-in build number instead of querying API
+    BUILD_ID="$(Build.BuildId)"
+ 
+    # ---------- Create tag ----------
+    TAG_NAME="${AUTHOR_NAME// /_}-${DATE}-${COMMIT_ID}-${BUILD_ID}"
+    echo "##vso[task.setvariable variable=TAG_NAME;isOutput=true]$TAG_NAME"
+    echo "##vso[task.setvariable variable=AUTHOR_NAME;isOutput=true]${AUTHOR_NAME}"
+    echo "##vso[task.setvariable variable=CLEAN_BRANCH;isOutput=true]$CLEAN_BRANCH"
+    echo "##vso[task.setvariable variable=CURRENT_BRANCH;isOutput=true]$CURRENT_BRANCH"
+ 
+    echo "Generated Tag: $TAG_NAME"
+    echo "Full branch (CURRENT_BRANCH): $CURRENT_BRANCH"
+    echo "Clean branch (CLEAN_BRANCH): $CLEAN_BRANCH"
+    echo "Author: $AUTHOR_NAME"
+    echo "Build ID: $BUILD_ID"
+  name: GenerateTag               # reference name for outputs
+  displayName: 'Step 1 - Generate Tag Name'
+ 
+# -------------------------------------------------
+# Step 1.4 – Quick Check: Images were pushed to which registry?
+# -------------------------------------------------
+- bash: |
+    echo "Images will be pushed via service connection: $(ACR_SERVICE_CONNECTION)"
+    echo "Backend repository: $(BACKEND_REPOSITORY)"
+    echo "Frontend repository: $(FRONTEND_REPOSITORY)"
+    echo "After this pipeline runs, check the Docker@2 task output above to see the actual registry URL used."
+  displayName: 'Step 1.4 - Docker Registry Info'
+ 
+# -------------------------------------------------
+# Step 1.5 – Build and Push Docker Images (Backend & Frontend)
+# -------------------------------------------------
+- bash: |
+    # Locate Dockerfiles and build contexts from configuration
+    BACKEND_DOCKERFILE_PATH=""
+    BACKEND_BUILD_CONTEXT_PATH=""
+    FRONTEND_DOCKERFILE_PATH=""
+    FRONTEND_BUILD_CONTEXT_PATH=""
+    
+    # Backend validation
+    BACKEND_DOCKER="$(Build.SourcesDirectory)/$(BACKEND_DOCKERFILE)"
+    BACKEND_CTX="$(Build.SourcesDirectory)/$(BACKEND_CONTEXT)"
+    BACKEND_VALID="$(Build.SourcesDirectory)/$(BACKEND_VALIDATION_DIR)"
+    
+    if [ -f "$BACKEND_DOCKER" ] && [ -d "$BACKEND_VALID" ]; then
+      BACKEND_DOCKERFILE_PATH="$BACKEND_DOCKER"
+      BACKEND_BUILD_CONTEXT_PATH="$BACKEND_CTX"
+      echo "✓ Backend Dockerfile found: $(BACKEND_DOCKERFILE)"
+      echo "✓ Backend context: $(BACKEND_CONTEXT)"
+    else
+      echo "✗ Backend Dockerfile not found at: $(BACKEND_DOCKERFILE)"
+      echo "✗ Or validation directory missing: $(BACKEND_VALIDATION_DIR)"
+    fi
+    
+    # Frontend validation
+    FRONTEND_DOCKER="$(Build.SourcesDirectory)/$(FRONTEND_DOCKERFILE)"
+    FRONTEND_CTX="$(Build.SourcesDirectory)/$(FRONTEND_CONTEXT)"
+    
+    if [ -f "$FRONTEND_DOCKER" ]; then
+      FRONTEND_DOCKERFILE_PATH="$FRONTEND_DOCKER"
+      FRONTEND_BUILD_CONTEXT_PATH="$FRONTEND_CTX"
+      echo "✓ Frontend Dockerfile found: $(FRONTEND_DOCKERFILE)"
+      echo "✓ Frontend context: $(FRONTEND_CONTEXT)"
+    else
+      echo "✗ Frontend Dockerfile not found at: $(FRONTEND_DOCKERFILE)"
+    fi
+    
+    echo "##vso[task.setvariable variable=BACKEND_DOCKERFILE_PATH]$BACKEND_DOCKERFILE_PATH"
+    echo "##vso[task.setvariable variable=BACKEND_BUILD_CONTEXT_PATH]$BACKEND_BUILD_CONTEXT_PATH"
+    echo "##vso[task.setvariable variable=FRONTEND_DOCKERFILE_PATH]$FRONTEND_DOCKERFILE_PATH"
+    echo "##vso[task.setvariable variable=FRONTEND_BUILD_CONTEXT_PATH]$FRONTEND_BUILD_CONTEXT_PATH"
+  displayName: 'Step 1.5.0 - Locate Dockerfiles and Build Contexts'
+ 
+- task: Docker@2
+  displayName: 'Step 1.5.1 - Build and Push Backend API Image'
+  name: BuildBackend
+  inputs:
+    command: 'buildAndPush'
+    containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+    repository: '$(BACKEND_REPOSITORY)'
+    Dockerfile: '$(BACKEND_DOCKERFILE_PATH)'
+    buildContext: '$(BACKEND_BUILD_CONTEXT_PATH)'
+    tags: |
+      $(GenerateTag.TAG_NAME)
+      api-$(GenerateTag.TAG_NAME)
+      latest
+  condition: and(succeeded(), ne(variables['BACKEND_DOCKERFILE_PATH'], ''))
+ 
+- bash: |
+    echo "=== Detecting Azure Container Registry URL ==="
+    
+    # Method 1: Check docker images for the pushed image
+    echo "Checking local Docker images..."
+    FULL_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "$(BACKEND_REPOSITORY)" | head -1)
+    echo "Found image: $FULL_IMAGE"
+    
+    # Extract registry URL (everything before the first /)
+    REGISTRY_URL=""
+    if [[ $FULL_IMAGE =~ ^([^/]+)/.* ]]; then
+      REGISTRY_URL="${BASH_REMATCH[1]}"
+      echo "✓ Extracted from image: $REGISTRY_URL"
+    fi
+    
+    # Method 2: Check Docker config for registry
+    if [ -z "$REGISTRY_URL" ]; then
+      echo "Checking Docker config..."
+      if [ -f "$HOME/.docker/config.json" ]; then
+        REGISTRY_URL=$(cat $HOME/.docker/config.json | grep -o '[^"]*\.azurecr\.io' | head -1)
+        if [ -n "$REGISTRY_URL" ]; then
+          echo "✓ Found in Docker config: $REGISTRY_URL"
+        fi
+      fi
+    fi
+    
+    # Method 3: List all images and try to find ACR pattern
+    if [ -z "$REGISTRY_URL" ]; then
+      echo "Searching all images for ACR pattern..."
+      REGISTRY_URL=$(docker images --format "{{.Repository}}" | grep -o '[^/]*\.azurecr\.io' | head -1)
+      if [ -n "$REGISTRY_URL" ]; then
+        echo "✓ Found ACR in images: $REGISTRY_URL"
+      fi
+    fi
+    
+    # Final check
+    if [ -z "$REGISTRY_URL" ]; then
+      echo "❌ Could not detect registry URL automatically"
+      echo "Listing all images for debugging:"
+      docker images | head -10
+      exit 1
+    fi
+    
+    echo ""
+    echo "=== Final Registry URL: $REGISTRY_URL ==="
+    echo "##vso[task.setvariable variable=ACR_URL;isOutput=true]$REGISTRY_URL"
+  displayName: 'Step 1.5.1.5 - Auto-Detect Registry URL'
+  name: ExtractACR
+ 
+- task: Docker@2
+  displayName: 'Step 1.5.2 - Build and Push Frontend UI Image'
+  inputs:
+    command: 'buildAndPush'
+    containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+    repository: '$(FRONTEND_REPOSITORY)'
+    Dockerfile: '$(FRONTEND_DOCKERFILE_PATH)'
+    buildContext: '$(FRONTEND_BUILD_CONTEXT_PATH)'
+    tags: |
+      $(GenerateTag.TAG_NAME)
+      ui-$(GenerateTag.TAG_NAME)
+      latest
+  condition: and(succeeded(), ne(variables['FRONTEND_DOCKERFILE_PATH'], ''))
+ 
+# -------------------------------------------------
+# Step 2 – Generate Kubernetes Resources
+# -------------------------------------------------
+- script: |
+    # Get the TAG_NAME and CLEAN_BRANCH from the output variables of Step 1
+    TAG_NAME="$(GenerateTag.TAG_NAME)"
+    CLEAN_BRANCH="$(GenerateTag.CLEAN_BRANCH)"
+
+    # Check if the TAG_NAME is set
+    if [ -z "$TAG_NAME" ]; then
+        echo "Error: TAG_NAME from the previous step is empty."
+        exit 1
+    fi
+
+    # Check if the CLEAN_BRANCH is set
+    if [ -z "$CLEAN_BRANCH" ]; then
+        echo "Error: CLEAN_BRANCH from the previous step is empty."
+        exit 1
+    fi
+
+    # Sanitize branch name for Kubernetes (replace / and other special chars with -)
+    SANITIZED_BRANCH=$(echo "$CLEAN_BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+
+    echo "Using TAG_NAME: $TAG_NAME"
+    echo "Using CLEAN_BRANCH: $CLEAN_BRANCH"
+    echo "Using SANITIZED_BRANCH: $SANITIZED_BRANCH for deployment names"
+
+    # Create dynamic deployment names from config
+    FRONTEND_DEPLOYMENT="${SANITIZED_BRANCH}$(FRONTEND_SUFFIX)"
+    API_DEPLOYMENT="${SANITIZED_BRANCH}$(BACKEND_SUFFIX)"
+
+    echo "Frontend Deployment Name: $FRONTEND_DEPLOYMENT"
+    echo "API Deployment Name: $API_DEPLOYMENT"
+
+    # Get the registry URL that was auto-detected during Docker build
+    ACR_URL="$(ExtractACR.ACR_URL)"
+    
+    if [ -z "$ACR_URL" ] || [ "$ACR_URL" == "" ]; then
+      echo "⚠️ ERROR: ACR_URL not detected from Docker build step"
+      echo "This should have been set by Step 1.5.1.5"
+      exit 1
+    fi
+    
+    echo "✓ Using detected ACR URL: $ACR_URL"
+
+    # Extract environment variables configuration
+    echo "📋 Loading environment variables configuration..."
+    
+    # Check if k8s-env-config.txt exists, otherwise use defaults
+    if [ -f "$(Build.SourcesDirectory)/config/k8s-env-config.txt" ]; then
+      echo "✓ Found config/k8s-env-config.txt, reading from file..."
+      
+      # Parse the config file
+      FRONTEND_ENV_VARS=()
+      BACKEND_ENV_VARS=()
+      SECTION=""
+      
+      while IFS= read -r line; do
+        # Skip comments and empty lines
+        [[ "$line" =~ ^#.*$ ]] && continue
+        [[ -z "$line" ]] && continue
+        
+        # Check for section headers
+        if [[ "$line" == "[FRONTEND]" ]]; then
+          SECTION="FRONTEND"
+          continue
+        elif [[ "$line" == "[BACKEND]" ]]; then
+          SECTION="BACKEND"
+          continue
+        fi
+        
+        # Add variable to appropriate array
+        if [[ "$SECTION" == "FRONTEND" ]]; then
+          FRONTEND_ENV_VARS+=("$line")
+        elif [[ "$SECTION" == "BACKEND" ]]; then
+          BACKEND_ENV_VARS+=("$line")
+        fi
+      done < "$(Build.SourcesDirectory)/config/k8s-env-config.txt"
+    else
+      echo "⚠️ config/k8s-env-config.txt not found, using defaults from docker-compose.yml..."
+      
+      # Frontend environment variables (from build args in docker-compose.yml)
+      FRONTEND_ENV_VARS=(
+        "NEXT_PUBLIC_API_URL"
+        "NEXT_PUBLIC_BASE_PATH"
+        "KEYCLOAK_SERVER_URL"
+        "KEYCLOAK_REALM"
+        "KEYCLOAK_CLIENT_ID"
+        "KEYCLOAK_CLIENT_SECRET"
+        "NEXTAUTH_SECRET"
+        "NEXTAUTH_URL"
+        "SUPERVITY_AUTH_DEBUG"
+        "NEXT_PUBLIC_KEYCLOAK_URL"
+        "APP_ENV"
+        "NODE_ENV"
+      )
+      
+      # Backend environment variables
+      BACKEND_ENV_VARS=(
+        "DATABASE_URL"
+        "POSTGRES_USER"
+        "POSTGRES_PASSWORD"
+        "POSTGRES_DB"
+        "APP_ENV"
+        "CORS_ORIGINS"
+        "AUTH_SECRET_KEY"
+        "AUTH_ALGORITHM"
+        "ACCESS_TOKEN_EXPIRE_MINUTES"
+      )
+    fi
+    
+    # Function to generate env vars for K8s
+    generate_k8s_env_vars() {
+      local env_array=("$@")
+      for var in "${env_array[@]}"; do
+        echo "            - name: $var"
+      done
+    }
+    
+    echo "✓ Loaded ${#FRONTEND_ENV_VARS[@]} frontend env vars"
+    echo "✓ Loaded ${#BACKEND_ENV_VARS[@]} backend env vars"
+
+    # Create Kubernetes deployment file
+    cat <<EOF > k8s-deployment.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ${FRONTEND_DEPLOYMENT}
+      namespace: $(K8S_NAMESPACE)
+      labels:
+        app: ${FRONTEND_DEPLOYMENT}
+        branch: ${SANITIZED_BRANCH}
+    spec:
+      replicas: $(FRONTEND_REPLICAS)
+      selector:
+        matchLabels:
+          app: ${FRONTEND_DEPLOYMENT}
+          svc: ${FRONTEND_DEPLOYMENT}-service
+      template:
+        metadata:
+          creationTimestamp: null
+          labels:
+            app: ${FRONTEND_DEPLOYMENT}
+            branch: ${SANITIZED_BRANCH}
+            svc: ${FRONTEND_DEPLOYMENT}-service
+        spec:
+          containers:
+          - name: ${FRONTEND_DEPLOYMENT}
+            image: ${ACR_URL}/$(FRONTEND_REPOSITORY):${TAG_NAME}
+            env:
+    $(generate_k8s_env_vars "${FRONTEND_ENV_VARS[@]}")
+            resources: {}
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: $(FRONTEND_IMAGE_PULL_POLICY)
+            ports:
+            - containerPort: $(FRONTEND_PORT)
+          restartPolicy: Always
+          terminationGracePeriodSeconds: $(TERMINATION_GRACE_PERIOD)
+          dnsPolicy: ClusterFirst
+          securityContext: {}
+          imagePullSecrets:
+          - name: $(K8S_IMAGE_PULL_SECRET)
+          schedulerName: default-scheduler
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: $(MAX_UNAVAILABLE)
+          maxSurge: $(MAX_SURGE)
+      revisionHistoryLimit: $(REVISION_HISTORY_LIMIT)
+      progressDeadlineSeconds: $(PROGRESS_DEADLINE_SECONDS)
+    ---
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ${API_DEPLOYMENT}
+      namespace: $(K8S_NAMESPACE)
+      labels:
+        app: ${API_DEPLOYMENT}
+        branch: ${SANITIZED_BRANCH}
+    spec:
+      replicas: $(BACKEND_REPLICAS)
+      selector:
+        matchLabels:
+          app: ${API_DEPLOYMENT}
+      template:
+        metadata:
+          creationTimestamp: null
+          labels:
+            app: ${API_DEPLOYMENT}
+            branch: ${SANITIZED_BRANCH}
+        spec:
+          containers:
+          - name: ${API_DEPLOYMENT}
+            image: ${ACR_URL}/$(BACKEND_REPOSITORY):${TAG_NAME}
+            env:
+    $(generate_k8s_env_vars "${BACKEND_ENV_VARS[@]}")
+            resources: {}
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: $(BACKEND_IMAGE_PULL_POLICY)
+            ports:
+            - containerPort: $(BACKEND_PORT)
+          restartPolicy: Always
+          terminationGracePeriodSeconds: $(TERMINATION_GRACE_PERIOD)
+          dnsPolicy: ClusterFirst
+          securityContext: {}
+          imagePullSecrets:
+          - name: $(K8S_IMAGE_PULL_SECRET)
+          schedulerName: default-scheduler
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: $(MAX_UNAVAILABLE)
+          maxSurge: $(MAX_SURGE)
+      revisionHistoryLimit: $(REVISION_HISTORY_LIMIT)
+      progressDeadlineSeconds: $(PROGRESS_DEADLINE_SECONDS)
+    EOF
+ 
+    # Create Kubernetes service file
+    cat <<EOF > k8s-service.yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${FRONTEND_DEPLOYMENT}-service
+      namespace: $(K8S_NAMESPACE)
+      labels:
+        app: ${FRONTEND_DEPLOYMENT}
+        branch: ${SANITIZED_BRANCH}
+    spec:
+      type: $(SERVICE_TYPE)
+      ports:
+        - name: ${FRONTEND_DEPLOYMENT}-port
+          protocol: TCP
+          port: $(FRONTEND_PORT)
+          targetPort: $(FRONTEND_PORT)
+      selector:
+        app: ${FRONTEND_DEPLOYMENT}
+        svc: ${FRONTEND_DEPLOYMENT}-service
+      sessionAffinity: $(SESSION_AFFINITY)
+      ipFamilies:
+        - IPv4
+      ipFamilyPolicy: $(IP_FAMILY_POLICY)
+      internalTrafficPolicy: $(INTERNAL_TRAFFIC_POLICY)
+
+
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${API_DEPLOYMENT}-service
+      namespace: $(K8S_NAMESPACE)
+      labels:
+        app: ${API_DEPLOYMENT}
+        branch: ${SANITIZED_BRANCH}
+    spec:
+      type: $(SERVICE_TYPE)
+      ports:
+        - name: ${API_DEPLOYMENT}-port
+          protocol: TCP
+          port: $(BACKEND_PORT)
+          targetPort: $(BACKEND_PORT)
+      selector:
+        app: ${API_DEPLOYMENT}
+        svc: ${API_DEPLOYMENT}-service
+      sessionAffinity: $(SESSION_AFFINITY)
+      ipFamilies:
+        - IPv4
+      ipFamilyPolicy: $(IP_FAMILY_POLICY)
+      internalTrafficPolicy: $(INTERNAL_TRAFFIC_POLICY)
+    EOF
+ 
+    echo "Kubernetes deployment and service files created successfully."
+  displayName: 'Step 2 - Generate Kubernetes Resources'
+ 
+# -------------------------------------------------
+# Step 2.5 – Connect to AKS Cluster and Deploy
+# -------------------------------------------------
+- task: Kubernetes@1
+  displayName: 'Step 2.5 - Deploy Deployment to AKS'
+  inputs:
+    connectionType: 'Azure Resource Manager'
+    azureSubscriptionEndpoint: '$(K8S_SUBSCRIPTION_ENDPOINT)'
+    azureResourceGroup: '$(K8S_RESOURCE_GROUP)'
+    kubernetesCluster: '$(K8S_CLUSTER_NAME)'
+    namespace: '$(K8S_NAMESPACE)'
+    command: 'apply'
+    arguments: '-f k8s-deployment.yaml'
+  condition: succeeded()
+
+- task: Kubernetes@1
+  displayName: 'Step 2.6 - Deploy Service to AKS'
+  inputs:
+    connectionType: 'Azure Resource Manager'
+    azureSubscriptionEndpoint: '$(K8S_SUBSCRIPTION_ENDPOINT)'
+    azureResourceGroup: '$(K8S_RESOURCE_GROUP)'
+    kubernetesCluster: '$(K8S_CLUSTER_NAME)'
+    namespace: '$(K8S_NAMESPACE)'
+    command: 'apply'
+    arguments: '-f k8s-service.yaml'
+  condition: succeeded()
+ 
+# -------------------------------------------------
+# Step 4 – Create Ingress for the Branch Deployment
+# -------------------------------------------------
+- script: |
+    # Get necessary variables from previous steps
+    CLEAN_BRANCH="$(GenerateTag.CLEAN_BRANCH)"
+    AUTHOR_NAME="$(GenerateTag.AUTHOR_NAME)"
+ 
+    # Sanitize branch name for Kubernetes (replace / and other special chars with -)
+    SANITIZED_BRANCH=$(echo "$CLEAN_BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+ 
+    # Construct unique ingress name
+    INGRESS_NAME="${SANITIZED_BRANCH}-ingress"
+
+    # Define the base host and paths from config
+    INGRESS_HOST_VAL="$(INGRESS_HOST)"
+    # Replace ${BRANCH} placeholder in path prefix template
+    PATH_PREFIX_TEMPLATE="$(INGRESS_PATH_PREFIX)"
+    FRONTEND_PATH_PREFIX="${PATH_PREFIX_TEMPLATE/\$\{BRANCH\}/${CLEAN_BRANCH}}"
+    API_PATH_PREFIX="${FRONTEND_PATH_PREFIX}$(INGRESS_API_PATH_SUFFIX)"
+
+    FRONTEND_SERVICE_NAME="${SANITIZED_BRANCH}$(FRONTEND_SUFFIX)-service"
+    API_SERVICE_NAME="${SANITIZED_BRANCH}$(BACKEND_SUFFIX)-service"
+ 
+    echo "Creating Ingress: $INGRESS_NAME"
+    echo "Host: $INGRESS_HOST_VAL"
+    echo "Frontend Path: $FRONTEND_PATH_PREFIX"
+    echo "API Path: $API_PATH_PREFIX"
+    echo "Frontend Service: $FRONTEND_SERVICE_NAME"
+    echo "API Service: $API_SERVICE_NAME"
+
+    # Create Kubernetes Ingress file
+    cat <<EOF > k8s-ingress.yaml
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: ${INGRESS_NAME}
+      namespace: $(K8S_NAMESPACE)
+      labels:
+        app.kubernetes.io/branch: ${SANITIZED_BRANCH}
+    spec:
+      ingressClassName: $(INGRESS_CLASS_NAME)
+      tls:
+        - hosts:
+            - ${INGRESS_HOST_VAL}
+          secretName: $(INGRESS_TLS_SECRET)
+      rules:
+      - host: ${INGRESS_HOST_VAL}
+        http:
+          paths:
+          - path: ${FRONTEND_PATH_PREFIX}
+            pathType: $(INGRESS_PATH_TYPE)
+            backend:
+              service:
+                name: ${FRONTEND_SERVICE_NAME}
+                port:
+                  number: $(FRONTEND_PORT)
+          - path: ${API_PATH_PREFIX}
+            pathType: $(INGRESS_PATH_TYPE)
+            backend:
+              service:
+                name: ${API_SERVICE_NAME}
+                port:
+                  number: $(BACKEND_PORT)
+    EOF
+ 
+    echo "Kubernetes Ingress file created successfully."
+  displayName: 'Step 4 - Create Ingress for Branch Deployment'
+  condition: succeeded()
+  env:
+    CLEAN_BRANCH: $(GenerateTag.CLEAN_BRANCH)
+    AUTHOR_NAME: $(GenerateTag.AUTHOR_NAME)
+ 
+- task: Kubernetes@1
+  displayName: 'Step 4.1 - Apply Ingress to AKS'
+  inputs:
+    connectionType: 'Azure Resource Manager'
+    azureSubscriptionEndpoint: '$(K8S_SUBSCRIPTION_ENDPOINT)'
+    azureResourceGroup: '$(K8S_RESOURCE_GROUP)'
+    kubernetesCluster: '$(K8S_CLUSTER_NAME)'
+    namespace: '$(K8S_NAMESPACE)'
+    command: 'apply'
+    arguments: '-f k8s-ingress.yaml'
+  condition: succeeded()
+ 
+# -------------------------------------------------
+# Step 5 – Trivy Security Scan (REMOVED FOR DEBUGGING)
+# -------------------------------------------------
+# Trivy steps temporarily removed to debug Dockerfile path issues
+ 
