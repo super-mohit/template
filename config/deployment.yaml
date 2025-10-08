@@ -33,8 +33,8 @@ docker:
   # 🔴 MUST EDIT: Repository names in your Azure Container Registry
   # These will be the image names: yourregistry.azurecr.io/REPO_NAME:tag
   # Use lowercase, alphanumeric, and hyphens only
-  backend_repository: "ap-command-center"           # Change to your backend repo name
-  frontend_repository: "ap-command-center-frontend" # Change to your frontend repo name
+  backend_repository: "newtest"           # Change to your backend repo name
+  frontend_repository: "newtest-frontend" # Change to your frontend repo name
   
   # 🟢 CAN EDIT LATER: Additional image tags (latest is always added automatically)
   additional_tags:
