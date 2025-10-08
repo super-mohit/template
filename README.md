@@ -66,17 +66,21 @@ Follow these steps to get your local development environment running:
     ```
 
 5.  **Configure Keycloak Client Secret**
-    After the first startup, you need to retrieve the Keycloak client secret and add it to your `.env` file:
-    
+    After the first startup, you need to switch the Keycloak realm to `supervity`, regenerate the client secret, and update your `.env` file:
+
     a. Open the Keycloak Admin Console at [http://localhost:8080](http://localhost:8080) and log in with credentials: `admin` / `admin`
-    
-    b. Navigate to: **Clients** → **super-client-dnh-dev-0001** → **Credentials** tab
-    
-    c. Copy the **Client Secret** value
-    
-    d. Open your `.env` file and paste the secret into `KEYCLOAK_CLIENT_SECRET=`
-    
-    e. Restart the services with a clean slate:
+
+    b. In the top left, switch the realm from `master` to **supervity** (use the realm dropdown).
+
+    c. Navigate to: **Clients** → **super-client-dnh-dev-0001** → **Credentials** tab
+
+    d. Click **Regenerate Secret** to generate a new client secret.
+
+    e. Copy the new **Client Secret** value.
+
+    f. Open your `.env` file and paste the secret into `KEYCLOAK_CLIENT_SECRET=`
+
+    g. Restart the services with a clean slate:
     ```bash
     docker-compose down -v
     make up
