@@ -1,22 +1,21 @@
 # docker-compose.yml
 services:
-  # Commenting out local postgres since using Azure PostgreSQL
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: supervity_postgres
-  #   environment:
-  #     POSTGRES_USER: supervity_user
-  #     POSTGRES_PASSWORD: supervity_password
-  #     POSTGRES_DB: supervity_ap_db
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   restart: unless-stopped
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-app_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - app-network
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.4
-    container_name: supervity_keycloak
     command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
@@ -31,102 +30,48 @@ services:
       - app-network
 
   backend:
-    container_name: supervity_backend_template
     build:
       context: .
       dockerfile: Dockerfile
     command: gunicorn -c gunicorn/dev.py app.main:app
     volumes:
       - ./app:/app/app
+      - ./alembic:/app/alembic  # Mount alembic directory
+      - ./alembic.ini:/app/alembic.ini  # Mount alembic config file
     ports:
       - "8001:8000"
-    environment:
-      - FRONTEND_URL=http://localhost:3001
-      # --- KEYCLOAK ADDITIONS START ---
-      - KEYCLOAK_SERVER_URL=http://keycloak:8080
-      - KEYCLOAK_REALM=supervity
-      - KEYCLOAK_ALGORITHM=RS256
-      - SUPERVITY_AUTH_DEBUG=true
-      - KEYCLOAK_AUDIENCE=account
-      - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
-      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-your-client-secret-here}
-      # --- KEYCLOAK ADDITIONS END ---
-      # --- BASE_PATH ADDITION START ---
-      - BASE_PATH=/app1 # Configurable base path
-      - ROOT_PATH=${ROOT_PATH:-} # Defaults to empty string if not set
-      # --- BASE_PATH ADDITION END ---
-      # Other environment variables commented out for basic setup
-      # - PG_USER=${PG_USER}
-      # - PG_PASSWORD=${PG_PASSWORD}
-      # - PG_HOST=${PG_HOST}
-      # - PG_PORT=${PG_PORT}
-      # - PG_DB_NAME=${PG_DB_NAME}
-      # - GEMINI_API_KEY=${GEMINI_API_KEY}
-      # - GEMINI_MODEL=${GEMINI_MODEL}
-      # - AUTH_SECRET_KEY=${AUTH_SECRET_KEY}
-      # - SAP_URL=${SAP_URL}
-      # - SAP_API_USERNAME=${SAP_API_USERNAME}
-      # - SAP_API_PASSWORD=${SAP_API_PASSWORD}
-      # - SAP_TAX_API_URL=${SAP_TAX_API_URL}
-      # - CORS_ORIGINS=${CORS_ORIGINS}
-      # - PDF_STORAGE_PATH=${PDF_STORAGE_PATH}
-      # - GENERATED_PDF_STORAGE_PATH=${GENERATED_PDF_STORAGE_PATH}
-      # - AUTH_ALGORITHM=${AUTH_ALGORITHM}
-      # - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
-      # - PRICE_TOLERANCE_PERCENT=${PRICE_TOLERANCE_PERCENT}
-      # - QUANTITY_TOLERANCE_PERCENT=${QUANTITY_TOLERANCE_PERCENT}
-      # - PARALLEL_WORKERS=${PARALLEL_WORKERS}
-      # - APP_ENV=${APP_ENV}
-      # # --- EMAIL INGESTION ADDITIONS START ---
-      # - TENANT_ID=${TENANT_ID}
-      # - CLIENT_ID=${CLIENT_ID}
-      # - CLIENT_SECRET=${CLIENT_SECRET}
-      # - TARGET_USER_EMAIL=${TARGET_USER_EMAIL}
-      # - ADANI_FOLDER_ID=${ADANI_FOLDER_ID}
-      # # --- EMAIL INGESTION ADDITIONS END ---
+    # All environment variables are now sourced from the .env file
+    env_file:
+      - .env
     depends_on:
       - keycloak
+      - postgres  # Add dependency on postgres
     networks:
       - app-network
     restart: unless-stopped
 
   frontend:
-    container_name: supervity_frontend_template
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      # --- MODIFICATION START ---
+      # Build-time arguments (`args`) are used to bake environment variables
+      # into the static frontend assets during the `next build` process.
       args:
-        # For Docker deployment, frontend container talks to backend container  
-        # The browser still accesses backend via localhost:8001 due to port mapping
-        - NEXT_PUBLIC_API_URL=http://localhost:8001
-        # Pass Keycloak configuration as build arguments (updated for supervity realm)
-        - KEYCLOAK_ISSUER=http://keycloak:8080/realms/supervity
-        - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
-        - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-your-client-secret-here}
-        - KEYCLOAK_SERVER_URL=http://keycloak:8080
-        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-nextauth-secret-here}
-        - NEXTAUTH_URL=http://localhost:3001/app1
-        - NEXT_PUBLIC_BASE_PATH=/app1
-        - SUPERVITY_AUTH_DEBUG=true
-      # --- MODIFICATION END ---
-    # Using default command from Dockerfile (npm start)
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH}
+        - KEYCLOAK_SERVER_URL=${KEYCLOAK_SERVER_URL}
+        - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+        - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+        - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+        - NEXTAUTH_URL=${NEXTAUTH_URL}
+        - SUPERVITY_AUTH_DEBUG=${SUPERVITY_AUTH_DEBUG}
     ports:
       - "3001:3000"
-    environment:
-      - NODE_ENV=production
-      # Override the API URL for the runtime environment
-      # This tells the client-side code to use localhost:8001 (which is correct for browser)
-      - NEXT_PUBLIC_API_URL=http://localhost:8001
-      # --- BASE_PATH ADDITION START ---
-      - NEXT_PUBLIC_BASE_PATH=/app1
-      # --- BASE_PATH ADDITION END ---
-      # --- KEYCLOAK/NEXTAUTH CONFIGURATION (updated for supervity realm) ---
-      - KEYCLOAK_CLIENT_ID=super-client-dnh-dev-0001
-      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-your-client-secret-here}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-nextauth-secret-here}
-      - NEXTAUTH_URL=http://localhost:3001/app1/api/auth/
-      - KEYCLOAK_SERVER_URL=http://keycloak:8080
+    # Runtime environment variables (`environment` or `env_file`) are available
+    # to the Node.js server process when it runs the application (`next start`).
+    env_file:
+      - .env
     depends_on:
       - keycloak
       - backend

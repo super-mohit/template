@@ -75,7 +75,6 @@ def generate_digest_cli(source, output_file="digest.txt", exclude_exts=None, is_
         "sample_data/POs/*",
         "sample_data/POs/**",
         "sample_data/pdf_templates.py",
-        "README.md",
         # Generated documents and output files
         "generated_documents",
         "generated_documents/*",

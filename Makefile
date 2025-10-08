@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: help up down logs-be logs-fe reset-db migrate-create migrate-up migrate-down migrate-history
+.PHONY: help up down logs-be logs-fe reset-db migrate-create migrate-up migrate-down migrate-history format lint test-be
 
 help:
 	@echo "Commands:"
@@ -8,6 +8,9 @@ help:
 	@echo "  logs-be     : View real-time logs for the backend."
 	@echo "  logs-fe     : View real-time logs for the frontend."
 	@echo "  reset-db    : Clean and re-initialize the database with sample data."
+	@echo "  format      : Automatically format all backend and frontend code."
+	@echo "  lint        : Lint all backend and frontend code for issues."
+	@echo "  test-be     : Run backend tests with pytest."
 	@echo ""
 	@echo "Database Migration Commands:"
 	@echo "  migrate-create MSG='description' : Create a new migration with auto-generated changes."
@@ -33,9 +36,9 @@ logs-fe:
 
 reset-db:
 	@echo "🧹 Resetting the database..."
-	docker-compose exec backend python scripts/cleanup_db.py --reset
-	@echo "🌱 Seeding database with initial config data..."
-	docker-compose exec backend python scripts/init_config_data.py
+	docker-compose exec backend python scripts/reset_db.py
+	@echo "🌱 Seeding database with initial data..."
+	docker-compose exec backend python scripts/seed_db.py
 	@echo "✅ Database reset complete!"
 
 migrate-create:
@@ -60,3 +63,23 @@ migrate-down:
 migrate-history:
 	@echo "📋 Migration history:"
 	docker-compose exec backend alembic history --verbose 
+
+format:
+	@echo "🎨 Formatting backend Python code..."
+	black .
+	isort .
+	@echo "🎨 Formatting frontend TypeScript/React code..."
+	@npm --prefix frontend run format
+	@echo "✅ Formatting complete!"
+
+lint:
+	@echo "🔍 Linting backend Python code..."
+	flake8 .
+	@echo "🔍 Linting frontend TypeScript/React code..."
+	@npm --prefix frontend run lint
+	@echo "✅ Linting complete!"
+
+test-be:
+	@echo "🧪 Running backend tests..."
+	docker-compose exec backend pytest
+	@echo "✅ Backend tests complete!"

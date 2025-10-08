@@ -90,7 +90,7 @@ Every Command Center we build will be composed of these three conceptual pillars
 The `template-og` provides a production-ready starting point that reflects these principles:
 *   **Backend API (`/app`):** A stateless FastAPI service for all business logic.
 *   **Frontend App (`/frontend`):** A Next.js SPA for the user interface.
-*   **Database:** Configured for PostgreSQL but adaptable. Use a relational DB for structured processes, or consider NoSQL for less rigid data.
+*   **Database:** Configured for PostgreSQL but adaptable. See the new section below on choosing the right database for your project.
 *   **AI Model Abstraction Layer:** **Do not make direct AI SDK calls in your business logic.** Create an internal `modules/ai_service/` directory. This service will have functions like `getRecommendation(data)`. This allows us to swap the underlying LLM (Gemini, OpenAI, etc.) without rewriting the entire application.
 *   **Background Tasks (`/app/core/background_tasks.py`):** The template is set up for this. All slow operations (document processing, AI analysis, report generation) **must** be handled in the background to keep the UI responsive.
 
@@ -101,6 +101,24 @@ Your database schema is the AI's long-term memory. Design it for learning.
 *   **Store the AI's Output:** The full, raw JSON or text from the AI, including its reasoning (like a `match_trace` or `analysis_log`).
 *   **Store the Final Outcome:** The ground truth. (e.g., `status: 'approved'` for an invoice, `resolution_code: 'user_error'` for an ITSM ticket).
 *   **Create a Feedback Table:** A dedicated table to store explicit user feedback, linked to the data record it relates to.
+
+### Step 3.4: Choosing Your Database
+
+A critical architectural decision is the type of database to use. This template provides a production-ready PostgreSQL (SQL) setup, which is ideal for many business processes. However, your choice should be deliberate.
+
+**When to use SQL (like the provided PostgreSQL):**
+*   **Structured, Relational Data:** Your process involves entities with clear, consistent relationships (e.g., users, invoices, purchase orders, products).
+*   **Transactional Integrity (ACID):** You require strong guarantees that operations complete fully or not at all. This is critical for financial or mission-critical systems.
+*   **Powerful Querying:** You need to perform complex joins, aggregations, and analytical queries across different data tables.
+*   **Our Recommendation:** **Start with SQL by default.** The patterns provided in this template are designed for it, and it's the right choice for the majority of "Command Center" applications.
+
+**When to consider NoSQL (like MongoDB or Firestore):**
+*   **Flexible or Evolving Schema:** Your data structure is inconsistent or changes frequently (e.g., storing user-defined form data, AI chat logs with varying metadata).
+*   **High-Volume, Unstructured Data:** You are ingesting massive amounts of data where the primary need is storage and retrieval, not complex relational queries (e.g., logs, IoT sensor data).
+*   **Horizontal Scalability:** Your application needs to scale across many servers easily, and you can tolerate eventual consistency.
+
+> **Need Guidance?**
+> The database choice has long-term implications for your application's architecture and performance. For guidance on making the right decision for your specific project, please reach out for an architectural review at **mohit@supervity.ai**.
 
 ---
 

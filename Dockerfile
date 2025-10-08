@@ -15,38 +15,31 @@ ENV PYTHONUNBUFFERED=1
 ENV APP_ENV=production
 WORKDIR /app
 
-# Install curl for health checks
 RUN apt-get update && apt-get install -y curl && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Create directories required by the application.
+# `scripts` and `alembic` are for development/migration tasks, but creating them
+# here prevents potential permission issues in different environments.
 RUN mkdir -p app gunicorn documents scripts alembic generated_documents document_storage
 
-# Copy the virtual environment from the builder stage
 COPY --from=builder /opt/venv /opt/venv
-# Copy only the application source code and Gunicorn config
 COPY app ./app/
 COPY gunicorn ./gunicorn/
-
-# Copy config files if they exist
 COPY start_gunicorn.sh ./
 
-# Note: Optional directories (documents, scripts, alembic) are created above in line 21
-
 RUN chmod -R 755 /app/*/
+# The chmod command will fail if start_gunicorn.sh doesn't exist,
+# so we ignore errors to make it optional.
 RUN chmod +x start_gunicorn.sh 2>/dev/null || true
 
-# Add the venv to the PATH
 ENV PATH="/opt/venv/bin:$PATH"
-
-# Set PYTHONPATH to include app directory, allowing `app.main:app` to be found
 ENV PYTHONPATH="/app"
 
-# Health check using dynamic API path based on BASE_PATH environment variable
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
   CMD BASE_PATH=${BASE_PATH:-} && API_PATH="${BASE_PATH}/api" && curl -f http://localhost:8000${API_PATH}/health || exit 1
 
-# Expose the port the app runs on
 EXPOSE 8000
 
-# The default command to run the application in production.
-# This will be overridden by the docker-compose file for local development.
+# The default command to run the application, expecting start_gunicorn.sh.
+# This is typically overridden by docker-compose for local development.
 ENTRYPOINT ["sh", "start_gunicorn.sh"]
