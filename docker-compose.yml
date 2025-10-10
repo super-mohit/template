@@ -19,20 +19,53 @@ services:
       timeout: 5s
       retries: 5
 
+  # Dedicated PostgreSQL database for Keycloak
+  postgres_keycloak:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-password}
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak_db}
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER:-keycloak} -d ${KEYCLOAK_DB_NAME:-keycloak_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.4
+    # Using start-dev for development while still leveraging PostgreSQL
     command: start-dev --import-realm
     environment:
+      # Admin credentials
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      # PostgreSQL database connection settings
+      KC_DB: ${KC_DB}
+      KC_DB_URL_HOST: ${KC_DB_URL_HOST}
+      KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
     volumes:
+      # Import volume for realm configuration
       - ./keycloak/import:/opt/keycloak/data/import
-      - ./keycloak/keycloak_data:/opt/keycloak/data/h2
+      # Removed H2 database volume - now using PostgreSQL
     ports:
       - "8080:8080"
     restart: unless-stopped
     networks:
       - app-network
+    # Wait for Keycloak's PostgreSQL database to be healthy before starting
+    depends_on:
+      postgres_keycloak:
+        condition: service_healthy
 
   backend:
     build:
@@ -90,6 +123,7 @@ services:
 
 volumes:
   postgres_data:
+  postgres_keycloak_data:
 
 # Define the shared network
 networks:
