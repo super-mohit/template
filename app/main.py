@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from . import schemas
 from .models import BusinessObject
 from .utils.auditing import log_audit_event
+from .routers import ingestion, ai_policies, jobs
 
 from .core.database import get_db, Base, engine
 from .core.logging_config import setup_logging
@@ -96,7 +97,7 @@ def get_workbench_item(
     # demonstrating the context-aware check.
     authz_engine.check(request, user, context=context)
     
-    return schemas.BusinessObject.from_orm(item)
+    return schemas.BusinessObject.model_validate(item)
     
 @api_router.post("/business-objects/", response_model=schemas.BusinessObject, tags=["Business Objects"])
 def create_business_object(
@@ -105,7 +106,7 @@ def create_business_object(
     db: Session = Depends(get_db)
 ):
     """Creates a new generic business object and logs the event."""
-    db_item = BusinessObject(**item.dict())
+    db_item = BusinessObject(**item.model_dump())
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
@@ -121,5 +122,10 @@ def create_business_object(
     db.commit()
     
     return db_item
+
+# Include additional routers
+api_router.include_router(ingestion.router)
+api_router.include_router(ai_policies.router)
+api_router.include_router(jobs.router)
 
 app.include_router(api_router)

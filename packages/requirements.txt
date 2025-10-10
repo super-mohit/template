@@ -8,6 +8,9 @@ python-jose[cryptography]
 requests
 geoip2
 python-dotenv
+google-genai
+pydantic-settings
+python-multipart
 
 # --- Development & Code Quality Tools ---
 black

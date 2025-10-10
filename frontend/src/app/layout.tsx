@@ -2,7 +2,7 @@ import './globals.css'
 import { Providers } from './providers'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
-import { Inter as FontSans } from 'next/font/google'
+import { Poppins } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import type { Metadata } from 'next'
 
@@ -18,9 +18,10 @@ export const metadata: Metadata = {
   },
 }
 
-const fontSans = FontSans({
+const poppins = Poppins({
   subsets: ['latin'],
-  variable: '--font-sans',
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
 })
 
 export default function RootLayout({
@@ -33,7 +34,7 @@ export default function RootLayout({
       <body
         className={cn(
           'bg-background min-h-screen font-sans antialiased',
-          fontSans.variable
+          poppins.variable
         )}
       >
         <Providers>

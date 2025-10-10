@@ -1,7 +1,11 @@
 # app/schemas/base_schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
+import warnings
+
+# Suppress the specific Pydantic warning about schema_json
+warnings.filterwarnings("ignore", message=".*schema_json.*shadows.*", category=UserWarning)
 
 # --- BusinessObject Schemas ---
 class BusinessObjectBase(BaseModel):
@@ -13,12 +17,11 @@ class BusinessObjectCreate(BusinessObjectBase):
     pass
 
 class BusinessObject(BusinessObjectBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 # --- Job Schemas ---
 class JobBase(BaseModel):
@@ -26,12 +29,11 @@ class JobBase(BaseModel):
     summary_json: Optional[Dict[str, Any]] = None
 
 class Job(JobBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     created_at: datetime
     completed_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
 
 # --- AuditLog Schemas ---
 class AuditLogBase(BaseModel):
@@ -43,9 +45,36 @@ class AuditLogBase(BaseModel):
     details_json: Optional[Dict[str, Any]] = None
 
 class AuditLog(AuditLogBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     timestamp: datetime
-    
-    class Config:
-        from_attributes = True
 
+# --- ExtractionConfiguration Schemas ---
+class ExtractionConfigurationBase(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
+    name: str
+    schema_json: Dict[str, Any]
+    natural_language_description: str
+
+class ExtractionConfiguration(ExtractionConfigurationBase):
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+    
+    id: int
+
+# --- AiPolicy Schemas ---
+class AiPolicyBase(BaseModel):
+    name: str
+    policy_type: str = "BASE"
+    context_field: Optional[str] = None
+    natural_language_rule: str
+    is_active: bool = True
+
+class AiPolicyCreate(AiPolicyBase):
+    pass
+
+class AiPolicy(AiPolicyBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int

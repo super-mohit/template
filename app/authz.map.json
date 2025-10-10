@@ -14,5 +14,17 @@
   "/api/business-objects/.*": {
     "description": "Grants access to the generic business object endpoints for any authenticated user.",
     "ALL": ["user"]
+  },
+  "/api/ai-policies/.*": {
+    "description": "Grants access to AI policy management endpoints for any authenticated user with the 'user' client role.",
+    "ALL": ["user"]
+  },
+  "/api/ingestion/.*": {
+    "description": "Grants access to data ingestion endpoints for any authenticated user with the 'user' client role.",
+    "ALL": ["user"]
+  },
+  "/api/jobs/.*": {
+    "description": "Grants access to job status endpoints for any authenticated user with the 'user' client role.",
+    "ALL": ["user"]
   }
 }
