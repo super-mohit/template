@@ -1,15 +1,35 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
-import { LogOut } from 'lucide-react'
+import { useSession, signIn } from 'next-auth/react'
+import { LogOut, LogIn } from 'lucide-react'
 import Link from 'next/link'
 
-// Dummy User Menu component for demonstration
+// User Menu component
 const UserMenu = () => {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
-  if (!session?.user) return null
+  if (status === 'loading') {
+    return (
+      <div className='h-8 w-32 animate-pulse rounded bg-gray-200'></div>
+    )
+  }
+
+  if (!session?.user) {
+    return (
+      <button
+        onClick={() => {
+          // Use NextAuth's signIn function with the base path as callback
+          const callbackUrl = basePath || '/'
+          signIn('keycloak', { callbackUrl })
+        }}
+        className='flex items-center gap-2 rounded-lg bg-[#000b37] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#000b37]/90'
+      >
+        <LogIn className='h-4 w-4' />
+        Sign In
+      </button>
+    )
+  }
 
   return (
     <div className='flex items-center gap-4'>

@@ -4,10 +4,18 @@ import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Inter as FontSans } from 'next/font/google'
 import { cn } from '@/lib/utils'
+import type { Metadata } from 'next'
 
-export const metadata = {
-  title: 'AI Command Center',
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+
+export const metadata: Metadata = {
+  title: 'Supervity AI Command Center',
   description: 'AI Command Center Template',
+  icons: {
+    icon: `${basePath}/supervity-favicon.png`,
+    shortcut: `${basePath}/supervity-favicon.png`,
+    apple: `${basePath}/supervity-favicon.png`,
+  },
 }
 
 const fontSans = FontSans({

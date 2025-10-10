@@ -27,13 +27,12 @@ export default withAuth(
           `Authorization check for path: ${req.nextUrl.pathname}. User is authorized: ${isAuthorized}`
         )
         if (!isAuthorized) {
-          log(`Redirecting to sign-in page.`)
+          log(`User not authorized, but will be handled by page-level auth checks.`)
         }
-        return isAuthorized
+        // Always return true to prevent middleware redirects
+        // Let each page handle its own authentication state
+        return true
       },
-    },
-    pages: {
-      signIn: '/api/auth/signin',
     },
   }
 )

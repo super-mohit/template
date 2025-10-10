@@ -1,4 +1,4 @@
 # app/schemas/__init__.py
-from .item import Item, ItemBase, ItemCreate
+from .base_schemas import BusinessObject, BusinessObjectCreate, Job, AuditLog
 
-__all__ = ["ItemBase", "ItemCreate", "Item"]
+__all__ = ["BusinessObject", "BusinessObjectCreate", "Job", "AuditLog"]

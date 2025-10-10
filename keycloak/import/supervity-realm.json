@@ -430,7 +430,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-supervity" ],
     "clientRoles" : {
-      "super-client-dnh-dev-0001" : [ "admin" ]
+      "super-client-dnh-dev-0001" : [ "admin", "user" ]
     },
     "notBefore" : 0,
     "groups" : [ ]
@@ -683,7 +683,7 @@
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
-    "secret" : "**********",
+    "secret" : "supervity-is-super",
     "redirectUris" : [ "*" ],
     "webOrigins" : [ "*" ],
     "notBefore" : 0,

@@ -2,206 +2,124 @@
 import logging
 import os
 from datetime import datetime, timezone
-
 import geoip2.database
-from fastapi import APIRouter, Depends, FastAPI, Header, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import asyncio
+from contextlib import asynccontextmanager
 
-# Import models and schemas
-from . import models, schemas
-# Import the database dependency
-from .core.database import get_db
-# Import the logging setup function
+# Import new models and schemas
+from . import schemas
+from .models import BusinessObject
+from .utils.auditing import log_audit_event
+
+from .core.database import get_db, Base, engine
 from .core.logging_config import setup_logging
-# Import the authentication dependency and the authorization engine instance
 from .security import authz_engine, get_current_user, verify_access
 
-# --- Logger Initialization ---
-# Get a logger for this module
 log = logging.getLogger(__name__)
 
-# --- Database Integration Completed ---
-# The mock_db has been replaced with a real PostgreSQL database
-# All data is now managed through SQLAlchemy ORM models
-# To use Geofencing, you must download the free GeoLite2-Country.mmdb database from MaxMind's website
-# and place it in the root directory of your project. Run: pip install geoip2
 try:
     geoip_reader = geoip2.database.Reader("/app/app/GeoLite2-Country.mmdb")
 except FileNotFoundError:
     geoip_reader = None
     log.warning("GeoLite2-Country.mmdb not found. Geofencing will default to 'US'.")
 
+# --- Scheduler Implementation ---
+async def recurring_background_tasks():
+    log.info("Proactive Engine Scheduler started.")
+    while True:
+        log.info("Scheduler running... (Future jobs will be triggered here)")
+        await asyncio.sleep(300)
 
-# --- Pydantic Models for Request Bodies ---
-class PurchaseOrder(BaseModel):
-    amount: int
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    log.info("Application starting up...")
+    # Create all tables on startup if they don't exist
+    Base.metadata.create_all(bind=engine)
+    task = asyncio.create_task(recurring_background_tasks())
+    yield
+    log.info("Application shutting down...")
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        log.info("Background task scheduler cancelled successfully.")
 
-
-class FileUpload(BaseModel):
-    size: int
-
-
-# --- App & Router Initialization ---
-# Create the FastAPI app instance
-app = FastAPI(title="AI Command Center API")
-
+app = FastAPI(title="AI Command Center API", lifespan=lifespan)
 
 @app.on_event("startup")
 async def startup_event():
-    """
-    Actions to take on application startup.
-    """
     setup_logging()
-    log.info("Application startup complete.")
-
+    log.info("Logging configured.")
 
 base_path = os.getenv("BASE_PATH", "")
-# The global 'verify_access' dependency is applied here. It will protect every
-# endpoint on this router according to the rules in this file.
 api_router = APIRouter(prefix=f"{base_path}/api", dependencies=[Depends(verify_access)])
 
-# Add the CORS middleware to the main FastAPI app instance.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict this to your frontend's domain
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- SIMPLE ENDPOINTS (Protected Automatically) ---
-# These endpoints require no special code because their rules are simple
-# and are handled by the global 'verify_access' dependency.
-
+# --- New, Simplified Endpoints ---
 
 @api_router.get("/health", tags=["Health"])
 def read_health():
-    """Liveness probe. Public via public.map.json."""
+    """Liveness probe. Made public via public.map.json."""
     return {"status": "ok"}
 
+@api_router.get("/dashboard/data", tags=["Dashboard"])
+def get_dashboard_data(user: dict = Depends(get_current_user)):
+    """PATTERN A (Simple Auth): Requires the 'user' role."""
+    return {"message": f"Dashboard data for {user.get('preferred_username')}"}
 
-@api_router.get("/test", tags=["Simple Scenarios"])
-def read_test_data(user: dict = Depends(get_current_user)):
-    """Requires any authenticated user."""
-    return {"message": f"Hello, {user.get('preferred_username')}"}
-
-
-@api_router.get("/admin/dashboard", tags=["Simple Scenarios"])
-def get_admin_dashboard(user: dict = Depends(get_current_user)):
-    """Requires the 'admin' role."""
-    return {
-        "message": f"Welcome to the admin dashboard, {user.get('preferred_username')}"
-    }
-
-
-# --- NEW DATABASE-DRIVEN ENDPOINTS ---
-
-
-@api_router.post("/items/", response_model=schemas.Item, tags=["Items"])
-def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db)):
-    """
-    Create a new item in the database.
-    This endpoint requires any authenticated user.
-    """
-    db_item = models.Item(name=item.name, description=item.description)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-
-@api_router.get("/items/", response_model=list[schemas.Item], tags=["Items"])
-def list_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """
-    List all items from the database.
-    This endpoint requires any authenticated user.
-    """
-    items = db.query(models.Item).offset(skip).limit(limit).all()
-    return items
-
-
-@api_router.get("/items/{item_id}", response_model=schemas.Item, tags=["Items"])
-def get_item(item_id: int, db: Session = Depends(get_db)):
-    """
-    Get a specific item by ID.
-    This endpoint requires any authenticated user.
-    """
-    item = db.query(models.Item).filter(models.Item.id == item_id).first()
-    if item is None:
-        from fastapi import HTTPException
-
-        raise HTTPException(status_code=404, detail="Item not found")
-    return item
-
-
-# --- CONTEXT-AWARE ENDPOINTS (Require Manual Checks) ---
-# These endpoints demonstrate the 3-step pattern for context-aware authorization:
-# 1. Fetch data needed for the context from database
-# 2. Build the 'context' dictionary
-# 3. Call the engine manually: authz_engine.check(request, user, context)
-
-
-# Example: Database-driven ownership check
-@api_router.put("/items/{item_id}", tags=["Context Scenarios"])
-def update_item(
+@api_router.get("/workbench/{item_id}", tags=["Workbench"])
+def get_workbench_item(
     item_id: int,
     request: Request,
     user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 ):
-    """
-    Update an item. This demonstrates context-aware authorization using database data.
-    The authorization engine can check ownership or other business rules.
-    """
-    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    """PATTERN B (Context-Aware Auth): This endpoint requires context."""
+    item = db.query(BusinessObject).filter(BusinessObject.id == item_id).first()
     if not item:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="Item not found")
-
-    # Pass the database record to the authorization engine for context-aware decisions
-    authz_engine.check(request, user, context={"resource": item})
-
-    # If authorization passes, update the item
-    item.name = f"Updated: {item.name}"
-    db.commit()
-    return {"status": "Item updated", "item": item}
-
-
-# Additional context-aware examples (simplified for template clarity)
-@api_router.get("/analytics/{region}", tags=["Context Scenarios"])
-def get_analytics(
-    region: str, request: Request, user: dict = Depends(get_current_user)
-):
-    """Path parameter authorization - engine automatically resolves {path.region}"""
-    authz_engine.check(request, user)  # No custom context needed
-    return {"region": region, "sales": 12345}
-
-
-@api_router.get("/secure-asset", tags=["Context Scenarios"])
-def get_secure_asset(
-    request: Request,
+    
+    # This is a placeholder. In a real scenario, you'd fetch ownership from the item.
+    context = {"resource": {"owner_id": "some_other_user_id"}} 
+    
+    # Manually invoke the authz engine with context. This will fail unless the user is an admin,
+    # demonstrating the context-aware check.
+    authz_engine.check(request, user, context=context)
+    
+    return schemas.BusinessObject.from_orm(item)
+    
+@api_router.post("/business-objects/", response_model=schemas.BusinessObject, tags=["Business Objects"])
+def create_business_object(
+    item: schemas.BusinessObjectCreate,
     user: dict = Depends(get_current_user),
-    x_forwarded_for: str | None = Header(None),
+    db: Session = Depends(get_db)
 ):
-    """Geofencing example - authorization based on request origin"""
-    country = "US"  # Default
-    if geoip_reader and x_forwarded_for:
-        try:
-            country = geoip_reader.country(
-                x_forwarded_for.split(",")[0]
-            ).country.iso_code
-        except geoip2.errors.AddressNotFoundError:
-            country = "UNKNOWN"
-    authz_engine.check(
-        request, user, context={"environment": {"source_country": country}}
+    """Creates a new generic business object and logs the event."""
+    db_item = BusinessObject(**item.dict())
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+
+    log_audit_event(
+        db=db,
+        user_email=user.get('email', 'unknown'),
+        action="CREATE",
+        entity_type="BusinessObject",
+        entity_id=db_item.id,
+        summary=f"Created new object: {db_item.name}"
     )
-    return {"asset": "Top Secret Data"}
+    db.commit()
+    
+    return db_item
 
-
-# For additional context-aware scenarios, see the authorization documentation
-
-# Include the router in the main app
 app.include_router(api_router)

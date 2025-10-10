@@ -51,13 +51,13 @@ Copy the example environment file. This is your single source of truth for all l
 cp .env.example .env
 ```
 
-#### 3. Generate `NEXTAUTH_SECRET`
+#### 3. Configure Secrets in `.env`
 Open the newly created `.env` file. You must generate a secret for `NEXTAUTH_SECRET`. Run this command and paste the output into the file:
 ```bash
 # Run this in your terminal and paste the output into the .env file
 openssl rand -base64 32
 ```
-**Important:** Leave `KEYCLOAK_CLIENT_SECRET` empty for now. You will generate it in a later step.
+**Good News:** The `KEYCLOAK_CLIENT_SECRET` is pre-configured to `supervity-is-super` for development. The template is ready to run out of the box!
 
 #### 4. Update Your Hosts File
 To ensure all services can communicate correctly on your local machine, add the following line to your system's hosts file:
@@ -67,7 +67,7 @@ To ensure all services can communicate correctly on your local machine, add the 
 *   **macOS/Linux:** `sudo nano /etc/hosts`
 *   **Windows:** Open Notepad as Administrator and edit `C:\Windows\System32\drivers\etc\hosts`
 
-#### 5. Launch the Application (First Time)
+#### 5. Launch the Application
 This single command builds all Docker images and starts the services.
 ```bash
 make up
@@ -75,25 +75,12 @@ make up
 > **What's Happening?** On this first run, Docker Compose will:
 > 1.  Create two persistent PostgreSQL databases (one for the app, one for Keycloak).
 > 2.  Start Keycloak, which will initialize its own database schema.
-> 3.  Keycloak will then automatically import the realm configuration from `keycloak/import/supervity-realm.json`, creating the client, client roles (`admin`, `user`), and pre-configured users (`super_admin`, `super_user`).
+> 3.  Keycloak will then automatically import the realm configuration from `keycloak/import/supervity-realm.json`, creating the client with the pre-configured secret (`supervity-is-super`), client roles (`admin`, `user`), and test users (`super_admin`, `super_user`).
+> 4.  Run database migrations to create the application tables.
 >
 > This initial startup may take a minute or two.
 
-#### 6. Configure the Keycloak Client Secret (One-Time Setup)
-For security, the client secret is generated on the first run. You need to retrieve it and provide it to the application.
-
-a. Open the Keycloak Admin Console at [http://localhost:8080](http://localhost:8080).
-b. Log in with the master credentials: `admin` / `admin`.
-c. In the top-left corner, switch the realm from `master` to **supervity**.
-d. Navigate to: **Clients** → **super-client-dnh-dev-0001** → **Credentials** tab.
-e. Click **Regenerate Secret**, copy the new value.
-f. Open your `.env` file and paste the new secret into the `KEYCLOAK_CLIENT_SECRET` variable.
-g. Finally, restart the stack to apply the new secret:
-    ```bash
-    docker-compose down && make up
-    ```
-
-#### 7. You're All Set!
+#### 6. You're All Set!
 Your full application stack is now running and correctly configured.
 
 *   **Frontend Application:** [http://localhost:3001/app1](http://localhost:3001/app1)
@@ -111,22 +98,32 @@ Your full application stack is now running and correctly configured.
         *   Password: `password`
         *   (Has the `user` client role)
 
+> **⚠️ Production Security Note:**
+> The default client secret (`supervity-is-super`) is intended for development only.
+> Before deploying to production, you **must** regenerate the client secret in Keycloak:
+> 1. Navigate to **Clients** → **super-client-dnh-dev-0001** → **Credentials**
+> 2. Click **Regenerate Secret** and copy the new value
+> 3. Update your production environment variables with the new secret
+
 ---
 
 ### 🛠️ Core `make` Commands
 
 Use these shortcuts to manage your development environment:
 
-| Command           | Description                                                        |
-|-------------------|--------------------------------------------------------------------|
-| `make up`         | ✅ Build and start all services in the background.                   |
-| `make down`       | 🛑 Stop and remove all running containers.                         |
-| `make logs-be`    | 👀 View the real-time logs for the backend service.                  |
-| `make logs-fe`    | 👀 View the real-time logs for the frontend service.                 |
-| `make format`     | 🎨 Automatically format all backend and frontend code.               |
-| `make lint`       | 🔍 Lint all backend and frontend code for issues.                    |
-| `make test-be`    | 🧪 Run the backend test suite with pytest.                           |
-| `make migrate-up` | ⬆️  Apply all pending database migrations to the application DB.   |
+| Command                      | Description                                                        |
+|------------------------------|--------------------------------------------------------------------|
+| `make up`                    | ✅ Build and start all services in the background.                   |
+| `make down`                  | 🛑 Stop and remove all running containers.                         |
+| `make logs-be`               | 👀 View the real-time logs for the backend service.                  |
+| `make logs-fe`               | 👀 View the real-time logs for the frontend service.                 |
+| `make format`                | 🎨 Automatically format all backend and frontend code.               |
+| `make lint`                  | 🔍 Lint all backend and frontend code for issues.                    |
+| `make test-be`               | 🧪 Run the backend test suite with pytest.                           |
+| `make migrate-create MSG="description"` | 🔄 Create a new database migration.                      |
+| `make migrate-up`            | ⬆️  Apply all pending database migrations to the application DB.   |
+| `make migrate-down`          | ⬇️  Rollback the last migration.                                  |
+| `make migrate-history`       | 📋 View the database migration history.                            |
 
 ---
 
@@ -134,7 +131,13 @@ Use these shortcuts to manage your development environment:
 
 ```
 .
+├── alembic/              # Database migration scripts (managed by Alembic)
+│   └── versions/         # Individual migration files
 ├── app/                  # The Python/FastAPI backend application
+│   ├── models/           # SQLAlchemy database models
+│   ├── schemas/          # Pydantic validation schemas
+│   ├── utils/            # Utility functions (auditing, etc.)
+│   └── core/             # Core configuration (database, logging)
 ├── docs/                 # All project documentation (Playbook, Guides)
 ├── frontend/             # The Next.js/React frontend application
 ├── gunicorn/             # Gunicorn configuration for dev/prod
@@ -143,6 +146,7 @@ Use these shortcuts to manage your development environment:
 ├── packages/             # Python dependency lists
 ├── utils/                # Shared utility scripts (e.g., wait_for_db.py)
 ├── tests/                # Backend test suite
+├── alembic.ini           # Alembic configuration file
 ├── docker-compose.yml    # Orchestrates all services for local development
 ├── Makefile              # Command shortcuts for development
 └── README.md             # You are here!
