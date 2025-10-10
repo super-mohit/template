@@ -1,7 +1,13 @@
 'use client'
 
 import { useSession, signIn } from 'next-auth/react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card'
 import { NavyButton } from '@/components/ui/accent-button'
 
 export default function ExplorerPage() {
@@ -47,8 +53,8 @@ export default function ExplorerPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Data Explorer</h1>
-      <p className="text-gray-600">This page is under construction.</p>
+      <h1 className='text-2xl font-bold'>Data Explorer</h1>
+      <p className='text-gray-600'>This page is under construction.</p>
     </div>
   )
 }

@@ -1,6 +1,6 @@
-import * as React from "react"
-import { X } from "lucide-react"
-import { cn } from "@/lib/utils"
+import * as React from 'react'
+import { X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ModalProps {
   isOpen: boolean
@@ -10,17 +10,23 @@ interface ModalProps {
   className?: string
 }
 
-export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  className,
+}: ModalProps) {
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
-    
+
     if (isOpen) {
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = 'unset'
@@ -30,35 +36,31 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className='fixed inset-0 z-50 flex items-center justify-center'>
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50" 
-        onClick={onClose}
-      />
-      
+      <div className='absolute inset-0 bg-black/50' onClick={onClose} />
+
       {/* Modal */}
-      <div className={cn(
-        "relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto",
-        className
-      )}>
+      <div
+        className={cn(
+          'relative mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl',
+          className
+        )}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">{title}</h2>
+        <div className='flex items-center justify-between border-b p-6'>
+          <h2 className='text-xl font-semibold'>{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className='text-gray-400 transition-colors hover:text-gray-600'
           >
-            <X className="h-5 w-5" />
+            <X className='h-5 w-5' />
           </button>
         </div>
-        
+
         {/* Content */}
-        <div className="p-6">
-          {children}
-        </div>
+        <div className='p-6'>{children}</div>
       </div>
     </div>
   )
 }
-

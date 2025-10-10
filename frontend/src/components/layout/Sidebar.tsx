@@ -1,11 +1,11 @@
 // frontend/src/components/layout/Sidebar.tsx
 'use client'
-import { 
-    LayoutDashboard, 
-    Settings, 
-    DatabaseZap, 
-    GanttChartSquare,
-    Search
+import {
+  LayoutDashboard,
+  Settings,
+  DatabaseZap,
+  GanttChartSquare,
+  Search,
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -43,7 +43,7 @@ const NavLink = ({
 
 export function Sidebar() {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
-  
+
   return (
     <div className='hidden border-r border-gray-200 bg-white md:block'>
       <div className='flex h-full max-h-screen flex-col gap-2'>

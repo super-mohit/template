@@ -1,6 +1,6 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Button, ButtonProps } from "./button"
+import * as React from 'react'
+import { cn } from '@/lib/utils'
+import { Button, ButtonProps } from './button'
 
 // Special Supervity branded buttons using exact brand colors
 
@@ -9,7 +9,7 @@ export const AccentButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Button
         className={cn(
-          "bg-supervity-lime text-supervity-black hover:bg-supervity-light-lime",
+          'bg-supervity-lime text-supervity-black hover:bg-supervity-light-lime',
           className
         )}
         ref={ref}
@@ -18,14 +18,14 @@ export const AccentButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
     )
   }
 )
-AccentButton.displayName = "AccentButton"
+AccentButton.displayName = 'AccentButton'
 
 export const NavyButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, ...props }, ref) => {
     return (
       <Button
         className={cn(
-          "bg-supervity-navy text-supervity-white hover:bg-supervity-soft-blue",
+          'bg-supervity-navy text-supervity-white hover:bg-supervity-soft-blue',
           className
         )}
         ref={ref}
@@ -34,14 +34,14 @@ export const NavyButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
     )
   }
 )
-NavyButton.displayName = "NavyButton"
+NavyButton.displayName = 'NavyButton'
 
 export const CoralButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, ...props }, ref) => {
     return (
       <Button
         className={cn(
-          "bg-supervity-coral-orange text-supervity-white hover:bg-supervity-light-pink",
+          'bg-supervity-coral-orange text-supervity-white hover:bg-supervity-light-pink',
           className
         )}
         ref={ref}
@@ -50,4 +50,4 @@ export const CoralButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
     )
   }
 )
-CoralButton.displayName = "CoralButton"
+CoralButton.displayName = 'CoralButton'

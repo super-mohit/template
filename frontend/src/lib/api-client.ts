@@ -64,9 +64,12 @@ export const JobSchema = z.object({
   status: z.string(),
   summary_json: z.any().nullable(),
   created_at: z.string().transform((val) => new Date(val)),
-  completed_at: z.string().nullable().transform((val) => val ? new Date(val) : null),
-});
-export type Job = z.infer<typeof JobSchema>;
+  completed_at: z
+    .string()
+    .nullable()
+    .transform((val) => (val ? new Date(val) : null)),
+})
+export type Job = z.infer<typeof JobSchema>
 
 export const AiPolicySchema = z.object({
   id: z.number(),
@@ -75,55 +78,62 @@ export const AiPolicySchema = z.object({
   context_field: z.string().nullable(),
   natural_language_rule: z.string(),
   is_active: z.boolean(),
-});
-export type AiPolicy = z.infer<typeof AiPolicySchema>;
+})
+export type AiPolicy = z.infer<typeof AiPolicySchema>
 
-export const AiPolicyCreateSchema = AiPolicySchema.omit({ id: true });
-export type AiPolicyCreate = z.infer<typeof AiPolicyCreateSchema>;
+export const AiPolicyCreateSchema = AiPolicySchema.omit({ id: true })
+export type AiPolicyCreate = z.infer<typeof AiPolicyCreateSchema>
 
 // --- NEW API FUNCTIONS ---
 
-export async function uploadDocuments(files: File[]): Promise<{ message: string }> {
-  const formData = new FormData();
-  files.forEach(file => {
-    formData.append("files", file);
-  });
+export async function uploadDocuments(
+  files: File[]
+): Promise<{ message: string }> {
+  const formData = new FormData()
+  files.forEach((file) => {
+    formData.append('files', file)
+  })
   return apiClient('/api/ingestion/upload', {
     method: 'POST',
     body: formData,
-  });
+  })
 }
 
 export async function getJobStatus(jobId: number): Promise<Job> {
-  const data = await apiClient(`/api/jobs/${jobId}`);
-  return JobSchema.parse(data);
+  const data = await apiClient(`/api/jobs/${jobId}`)
+  return JobSchema.parse(data)
 }
 
 export async function getAiPolicies(): Promise<AiPolicy[]> {
-  const data = await apiClient('/api/ai-policies/');
-  return z.array(AiPolicySchema).parse(data);
+  const data = await apiClient('/api/ai-policies/')
+  return z.array(AiPolicySchema).parse(data)
 }
 
-export async function createAiPolicy(policy: AiPolicyCreate): Promise<AiPolicy> {
+export async function createAiPolicy(
+  policy: AiPolicyCreate
+): Promise<AiPolicy> {
   const data = await apiClient('/api/ai-policies/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(policy),
-  });
-  return AiPolicySchema.parse(data);
+  })
+  return AiPolicySchema.parse(data)
 }
 
-export async function updateAiPolicy(id: number, policy: AiPolicyCreate): Promise<AiPolicy> {
+export async function updateAiPolicy(
+  id: number,
+  policy: AiPolicyCreate
+): Promise<AiPolicy> {
   const data = await apiClient(`/api/ai-policies/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(policy),
-  });
-  return AiPolicySchema.parse(data);
+  })
+  return AiPolicySchema.parse(data)
 }
 
 export async function deleteAiPolicy(id: number): Promise<void> {
   await apiClient(`/api/ai-policies/${id}`, {
     method: 'DELETE',
-  });
+  })
 }

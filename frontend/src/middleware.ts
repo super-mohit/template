@@ -27,7 +27,9 @@ export default withAuth(
           `Authorization check for path: ${req.nextUrl.pathname}. User is authorized: ${isAuthorized}`
         )
         if (!isAuthorized) {
-          log(`User not authorized, but will be handled by page-level auth checks.`)
+          log(
+            `User not authorized, but will be handled by page-level auth checks.`
+          )
         }
         // Always return true to prevent middleware redirects
         // Let each page handle its own authentication state

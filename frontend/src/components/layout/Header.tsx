@@ -10,9 +10,7 @@ const UserMenu = () => {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
   if (status === 'loading') {
-    return (
-      <div className='h-8 w-32 animate-pulse rounded bg-gray-200'></div>
-    )
+    return <div className='h-8 w-32 animate-pulse rounded bg-gray-200'></div>
   }
 
   if (!session?.user) {
@@ -37,9 +35,7 @@ const UserMenu = () => {
         <span className='text-sm font-semibold text-gray-900'>
           {session.user.name}
         </span>
-        <span className='text-xs text-gray-500'>
-          {session.user.email}
-        </span>
+        <span className='text-xs text-gray-500'>{session.user.email}</span>
       </div>
       <button
         onClick={() => {

@@ -20,7 +20,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   log('Access token has expired or is about to expire. Attempting to refresh.')
   try {
     // Use the internal Keycloak URL for server-to-server communication
-    const keycloakServerUrl = process.env.KEYCLOAK_SERVER_URL || 'http://keycloak:8080'
+    const keycloakServerUrl =
+      process.env.KEYCLOAK_SERVER_URL || 'http://keycloak:8080'
     const keycloakRealm = process.env.KEYCLOAK_REALM || 'supervity'
     const response = await fetch(
       `${keycloakServerUrl}/realms/${keycloakRealm}/protocol/openid-connect/token`,
@@ -64,7 +65,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 }
 
 // Use the internal Keycloak URL for server-to-server OIDC operations
-const keycloakServerUrl = process.env.KEYCLOAK_SERVER_URL || 'http://keycloak:8080'
+const keycloakServerUrl =
+  process.env.KEYCLOAK_SERVER_URL || 'http://keycloak:8080'
 const keycloakRealm = process.env.KEYCLOAK_REALM || 'supervity'
 const keycloakIssuer = `${keycloakServerUrl}/realms/${keycloakRealm}`
 
@@ -125,10 +127,10 @@ const authOptions: AuthOptions = {
     },
     async redirect({ url, baseUrl }) {
       log(`Redirect callback triggered. url: ${url}, baseUrl: ${baseUrl}`)
-      
+
       // Handle base path correctly
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
-      
+
       // Allows relative callback URLs
       if (url.startsWith('/')) {
         // Check if url already starts with basePath to avoid duplication

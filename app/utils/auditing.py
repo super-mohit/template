@@ -1,7 +1,10 @@
 # app/utils/auditing.py
+from typing import Any, Dict, Optional
+
 from sqlalchemy.orm import Session
-from typing import Optional, Dict, Any
+
 from app.models import AuditLog
+
 
 def log_audit_event(
     db: Session,
@@ -25,4 +28,3 @@ def log_audit_event(
         details_json=details or {},
     )
     db.add(audit_log)
-

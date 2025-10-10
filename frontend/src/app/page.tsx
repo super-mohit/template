@@ -4,7 +4,13 @@ import { useState } from 'react'
 import { useSession, signIn } from 'next-auth/react'
 import apiClient from '@/lib/api-client'
 import { NavyButton } from '@/components/ui/accent-button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card'
 
 export default function HomePage() {
   const { status } = useSession()
@@ -91,11 +97,16 @@ export default function HomePage() {
         <Card className='border-0 bg-white shadow-sm'>
           <CardHeader>
             <CardTitle>Pattern A: Simple Role-Based Auth</CardTitle>
-            <CardDescription>Calls `/api/dashboard/data`. Should succeed for any logged-in user.</CardDescription>
+            <CardDescription>
+              Calls `/api/dashboard/data`. Should succeed for any logged-in
+              user.
+            </CardDescription>
           </CardHeader>
           <CardContent className='space-y-3'>
             <NavyButton
-              onClick={() => callApi('/api/dashboard/data', setDashboardResponse)}
+              onClick={() =>
+                callApi('/api/dashboard/data', setDashboardResponse)
+              }
               disabled={isLoading}
               className='w-full'
             >
@@ -103,17 +114,23 @@ export default function HomePage() {
             </NavyButton>
             {dashboardResponse && (
               <div className='mt-4 rounded-lg border bg-gray-50 p-4'>
-                <pre className='overflow-x-auto text-xs'><code>{dashboardResponse}</code></pre>
+                <pre className='overflow-x-auto text-xs'>
+                  <code>{dashboardResponse}</code>
+                </pre>
               </div>
             )}
           </CardContent>
         </Card>
 
-            <Card className='border-0 bg-white shadow-sm'>
-              <CardHeader>
-                <CardTitle>Pattern B: Context-Aware Auth</CardTitle>
-                <CardDescription>Calls `/api/workbench/1`. The rule requires `owner_id` context. This will fail with a 403 Forbidden unless you are logged in as admin.</CardDescription>
-              </CardHeader>
+        <Card className='border-0 bg-white shadow-sm'>
+          <CardHeader>
+            <CardTitle>Pattern B: Context-Aware Auth</CardTitle>
+            <CardDescription>
+              Calls `/api/workbench/1`. The rule requires `owner_id` context.
+              This will fail with a 403 Forbidden unless you are logged in as
+              admin.
+            </CardDescription>
+          </CardHeader>
           <CardContent className='space-y-3'>
             <NavyButton
               onClick={() => callApi('/api/workbench/1', setWorkbenchResponse)}
@@ -124,7 +141,9 @@ export default function HomePage() {
             </NavyButton>
             {workbenchResponse && (
               <div className='mt-4 rounded-lg border bg-gray-50 p-4'>
-                <pre className='overflow-x-auto text-xs'><code>{workbenchResponse}</code></pre>
+                <pre className='overflow-x-auto text-xs'>
+                  <code>{workbenchResponse}</code>
+                </pre>
               </div>
             )}
           </CardContent>

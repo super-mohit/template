@@ -123,12 +123,15 @@ def verify_access(
     endpoint perform the check manually.
     """
     request_path = request.url.path
-    
+
     # Dynamically get the base_path from the environment (same as in authz.py)
     base_path = os.getenv("BASE_PATH", "")
 
     # Check if the path is whitelisted as public (same logic as AuthzEngine.check)
-    if any(re.fullmatch(f"{base_path}{p}", request_path) for p in authz_engine._public_paths):
+    if any(
+        re.fullmatch(f"{base_path}{p}", request_path)
+        for p in authz_engine._public_paths
+    ):
         return
 
     for rule_path, rule in authz_engine._authz_rules.items():

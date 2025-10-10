@@ -1,12 +1,14 @@
 # File: app/modules/ai_policies/service.py
 import json
 import logging
-from sqlalchemy.orm import Session
-from app.config import settings
-from app.models import BusinessObject, AiPolicy
-from app.utils.auditing import log_audit_event
+
 from google import genai
 from google.genai import types
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.models import AiPolicy, BusinessObject
+from app.utils.auditing import log_audit_event
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +17,9 @@ policy_client = None
 try:
     if settings.GEMINI_API_KEY:
         policy_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        log.info("AI Policy Engine client configured successfully with Gemini 2.5 Flash.")
+        log.info(
+            "AI Policy Engine client configured successfully with Gemini 2.5 Flash."
+        )
     else:
         log.warning("GEMINI_API_KEY not set. AI Policy Engine will not be available.")
 except Exception as e:
@@ -38,10 +42,11 @@ You are an expert analyst AI. Your task is to analyze a business object based on
 Analyze the data against the rules and provide your JSON output.
 """
 
+
 def get_ai_decision(db: Session, business_object: BusinessObject):
     """
     Analyze a business object using AI policies and update its status.
-    
+
     Args:
         db: Database session
         business_object: The BusinessObject to analyze
@@ -59,7 +64,9 @@ def get_ai_decision(db: Session, business_object: BusinessObject):
             raise Exception("No active AI policies found in the database.")
 
         # 2. Compile rules for the prompt
-        rules_text = "\n".join([f"- {p.natural_language_rule}" for p in active_policies])
+        rules_text = "\n".join(
+            [f"- {p.natural_language_rule}" for p in active_policies]
+        )
 
         # 3. Format data for the prompt
         data_text = json.dumps(business_object.data, indent=2)
@@ -69,7 +76,7 @@ def get_ai_decision(db: Session, business_object: BusinessObject):
 
         # 5. Make the AI call using correct Gemini 2.5 Flash syntax
         model = "gemini-2.5-flash"
-        
+
         contents = [
             types.Content(
                 role="user",
@@ -78,7 +85,7 @@ def get_ai_decision(db: Session, business_object: BusinessObject):
                 ],
             ),
         ]
-        
+
         generate_content_config = types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(
                 thinking_budget=0,
@@ -103,7 +110,7 @@ def get_ai_decision(db: Session, business_object: BusinessObject):
             ],
             response_mime_type="application/json",
         )
-        
+
         # Stream the response and collect it
         full_response = ""
         for chunk in policy_client.models.generate_content_stream(
@@ -113,7 +120,7 @@ def get_ai_decision(db: Session, business_object: BusinessObject):
         ):
             if chunk.text:
                 full_response += chunk.text
-        
+
         if not full_response.strip():
             raise Exception("AI returned an empty response.")
 
@@ -124,8 +131,11 @@ def get_ai_decision(db: Session, business_object: BusinessObject):
         # 6. Update the BusinessObject
         business_object.status = recommendation.lower()
         if isinstance(business_object.data, dict):
-            business_object.data['ai_analysis'] = {"recommendation": recommendation, "trace": trace}
-        
+            business_object.data["ai_analysis"] = {
+                "recommendation": recommendation,
+                "trace": trace,
+            }
+
         log_audit_event(
             db=db,
             user_email="AI Policy Engine",
@@ -133,16 +143,21 @@ def get_ai_decision(db: Session, business_object: BusinessObject):
             entity_type="BusinessObject",
             entity_id=business_object.id,
             summary=f"AI recommended status: {recommendation}",
-            details_json={"trace": trace}
+            details_json={"trace": trace},
         )
         db.commit()
-        log.info(f"AI decision processed for BusinessObject ID: {business_object.id}. Recommendation: {recommendation}")
+        log.info(
+            f"AI decision processed for BusinessObject ID: {business_object.id}. Recommendation: {recommendation}"
+        )
 
     except Exception as e:
-        log.error(f"Error during AI decision process for ID {business_object.id}: {e}", exc_info=True)
+        log.error(
+            f"Error during AI decision process for ID {business_object.id}: {e}",
+            exc_info=True,
+        )
         business_object.status = "error"
         if isinstance(business_object.data, dict):
-             business_object.data['ai_error'] = str(e)
+            business_object.data["ai_error"] = str(e)
         log_audit_event(
             db=db,
             user_email="System",
@@ -150,7 +165,6 @@ def get_ai_decision(db: Session, business_object: BusinessObject):
             entity_type="BusinessObject",
             entity_id=business_object.id,
             summary="The AI decision-making process failed.",
-            details_json={"error": str(e)}
+            details_json={"error": str(e)},
         )
         db.commit()
-
