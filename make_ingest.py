@@ -136,7 +136,6 @@ def generate_digest_cli(
             # Database files
             "*.sqlite3",
             "*.sqlite",
-            "*.db",
             "ap_data.db",
             "chroma.sqlite3",
             # Python-related
